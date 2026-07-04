@@ -1,0 +1,93 @@
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Save, X } from 'lucide-react';
+
+const PROJETOS = [
+  'Projeto Afeto',
+  'Afeto Empreendedorismo',
+  'Alimentando Vidas',
+  'Brincadeira é Coisa Séria',
+  'Brinquedoteca Itinerante',
+  'Despertar Empreendedor',
+  'Liderança Jovem',
+  'Natal de Todo Mundo',
+  'Programa Educação e Trabalho (PET)',
+  'Protagonizar en Cena',
+  'Sorridente',
+  'Ver é Bom Demais',
+  'Outro'
+];
+const PERMISSOES = ['Fornecer materiais','Prestar serviço','Doação de produtos','Consultoria','Transporte e logística','Alimentação','Outro'];
+
+function formatPhone(value) {
+  const d = value.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+}
+
+function formatCnpj(value) {
+  const d = value.replace(/\D/g, '').slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0,2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8)}`;
+  return `${d.slice(0,2)}.${d.slice(2,5)}.${d.slice(5,8)}/${d.slice(8,12)}-${d.slice(12)}`;
+}
+
+export default function FornecedorForm({ initialData, onSubmit, onCancel, isSubmitting }) {
+  const [form, setForm] = useState({ nome:'', empresa_pf:'', cnpj:'', email:'', telefone:'', palavra_chave:'', projeto:'', observacao:'', permissao_para:[], status:'ativo' });
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (initialData) setForm({ nome: initialData.nome||'', empresa_pf: initialData.empresa_pf||'', cnpj: initialData.cnpj||'', email: initialData.email||'', telefone: initialData.telefone||'', palavra_chave: initialData.palavra_chave||'', projeto: initialData.projeto||'', observacao: initialData.observacao||'', permissao_para: initialData.permissao_para||[], status: initialData.status||'ativo' });
+  }, [initialData]);
+
+  const validate = () => {
+    const e = {};
+    if (!form.nome.trim()) e.nome = 'Nome é obrigatório';
+    if (!form.empresa_pf.trim()) e.empresa_pf = 'Empresa/PF é obrigatório';
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'E-mail inválido';
+    setErrors(e); return Object.keys(e).length === 0;
+  };
+
+  const set = (field, value) => { setForm(p => ({ ...p, [field]: value })); if (errors[field]) setErrors(p => ({ ...p, [field]: undefined })); };
+  const togglePerm = (perm) => setForm(p => ({ ...p, permissao_para: p.permissao_para.includes(perm) ? p.permissao_para.filter(x => x !== perm) : [...p.permissao_para, perm] }));
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>{initialData ? 'Editar Fornecedor' : 'Cadastrar Fornecedor'}</CardTitle></CardHeader>
+      <CardContent>
+        <form onSubmit={(e) => { e.preventDefault(); if (validate()) onSubmit(form); }} className="space-y-6">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2"><Label>Nome <span className="text-destructive">*</span></Label><Input placeholder="Nome do fornecedor" value={form.nome} onChange={e => set('nome', e.target.value)} className={errors.nome ? 'border-destructive' : ''} />{errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}</div>
+            <div className="space-y-2"><Label>Empresa / PF <span className="text-destructive">*</span></Label><Input placeholder="Nome da empresa ou pessoa física" value={form.empresa_pf} onChange={e => set('empresa_pf', e.target.value)} className={errors.empresa_pf ? 'border-destructive' : ''} />{errors.empresa_pf && <p className="text-xs text-destructive">{errors.empresa_pf}</p>}</div>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2"><Label>E-mail</Label><Input type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => set('email', e.target.value)} className={errors.email ? 'border-destructive' : ''} />{errors.email && <p className="text-xs text-destructive">{errors.email}</p>}</div>
+            <div className="space-y-2"><Label>Telefone</Label><Input placeholder="(31) 99999-9999" value={form.telefone} onChange={e => set('telefone', formatPhone(e.target.value))} /></div>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2"><Label>Palavra Chave</Label><Input placeholder="Ex.: fraldas, higiene" value={form.palavra_chave} onChange={e => set('palavra_chave', e.target.value)} /></div>
+            <div className="space-y-2"><Label>CNPJ</Label><Input placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => set('cnpj', formatCnpj(e.target.value))} /></div>
+            <div className="space-y-2"><Label>Projeto</Label><Select value={form.projeto} onValueChange={v => set('projeto', v)}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{PROJETOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select></div>
+          </div>
+          <div className="space-y-2"><Label>Status</Label><Select value={form.status} onValueChange={v => set('status', v)}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
+          <div className="space-y-3"><Label>Permissão Para</Label><div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">{PERMISSOES.map(perm => (<label key={perm} className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-accent transition-colors cursor-pointer text-sm"><Checkbox checked={form.permissao_para.includes(perm)} onCheckedChange={() => togglePerm(perm)} />{perm}</label>))}</div></div>
+          <div className="space-y-2"><Label>Observação</Label><Textarea placeholder="Observações adicionais..." value={form.observacao} onChange={e => set('observacao', e.target.value)} rows={4} /></div>
+          <div className="flex items-center gap-3 pt-2">
+            <Button type="submit" disabled={isSubmitting} className="gap-2">{isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Salvando...</> : <><Save className="h-4 w-4" />{initialData ? 'Atualizar' : 'Cadastrar'}</>}</Button>
+            {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="gap-2"><X className="h-4 w-4" />Cancelar</Button>}
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
