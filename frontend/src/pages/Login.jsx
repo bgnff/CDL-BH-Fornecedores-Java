@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ const LOGO_URL = 'https://cdl-bh-manager-1-zip--bg21829.replit.app/logo-principa
 
 export default function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,9 +19,14 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setLoading(true);
-    try { await login(email, password); window.location.href = '/'; }
-    catch { setError('E-mail ou senha incorretos.'); }
-    finally { setLoading(false); }
+    try {
+      await login(email, password);
+      navigate('/');
+    } catch (err) {
+      setError('E-mail ou senha incorretos.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

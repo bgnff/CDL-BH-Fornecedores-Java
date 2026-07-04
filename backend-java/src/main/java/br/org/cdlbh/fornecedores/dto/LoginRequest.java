@@ -40,9 +40,9 @@ public class LoginRequest {
      * Senha do usuário
      * 
      * @NotBlank: Não pode ser nulo nem vazio
-     * @Size: Tamanho mínimo de 8 caracteres
+     * @Size: Tamanho mínimo de 6 caracteres (ajustado para ser mais flexível)
      */
     @NotBlank(message = "Senha é obrigatória")
-    @Size(min = 8, message = "Senha deve ter no mínimo 8 caracteres")
+    @Size(min = 6, message = "Senha deve ter no mínimo 6 caracteres")
     private String password;
 }

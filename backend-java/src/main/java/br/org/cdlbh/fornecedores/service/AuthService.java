@@ -43,17 +43,28 @@ public class AuthService {
      * @throws RuntimeException se credenciais forem inválidas
      */
     public LoginResponse login(LoginRequest request) {
+        // Log para debug
+        System.out.println("[AuthService] Tentativa de login para email: " + request.getEmail());
+        
         // Busca o usuário pelo e-mail
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Credenciais inválidas."));
+                .orElseThrow(() -> {
+                    System.out.println("[AuthService] Usuário não encontrado: " + request.getEmail());
+                    return new RuntimeException("Credenciais inválidas.");
+                });
+
+        System.out.println("[AuthService] Usuário encontrado: " + usuario.getEmail() + ", ID: " + usuario.getId());
 
         // Verifica se a senha está correta
         // passwordEncoder.matches(): Compara a senha em texto plano com o hash bcrypt
         // - Retorna true se a senha corresponde ao hash
         // - É seguro porque bcrypt é lento e usa salt
         if (!passwordEncoder.matches(request.getPassword(), usuario.getSenhaHash())) {
+            System.out.println("[AuthService] Senha incorreta para usuário: " + request.getEmail());
             throw new RuntimeException("Credenciais inválidas.");
         }
+
+        System.out.println("[AuthService] Senha correta, gerando token JWT");
 
         // Gera o token JWT
         String token = jwtProvider.generateToken(
@@ -62,6 +73,8 @@ public class AuthService {
                 usuario.getNome(),
                 usuario.getRole().name()
         );
+
+        System.out.println("[AuthService] Token JWT gerado com sucesso");
 
         // Cria a resposta com o token e dados do usuário
         LoginResponse response = new LoginResponse();
