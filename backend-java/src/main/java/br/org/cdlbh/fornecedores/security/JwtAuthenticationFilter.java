@@ -92,9 +92,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } catch (Exception e) {
-                // Se houver erro na validação do token, apenas logamos e continuamos
-                // O usuário não será autenticado e receberá 401 se tentar acessar endpoint protegido
+                // Se houver erro na validação do token, enviamos resposta 401 imediatamente
+                // Isso garante a semântica correta: 401 = não autenticado (token inválido/ausente)
                 logger.error("Erro ao processar token JWT: " + e.getMessage());
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Token inválido ou expirado.\"}");
+                return;
             }
         }
 

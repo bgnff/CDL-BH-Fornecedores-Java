@@ -11,10 +11,13 @@
 -- Este schema será usado em PRODUÇÃO pela Fundação CDL-BH.
 -- ============================================================
 
+-- Remove o banco de dados existente para recriação limpa
+DROP DATABASE IF EXISTS cdl_bh_fornecedores_java;
+
 -- Criação do banco de dados
 -- CHARACTER SET utf8mb4: Suporta caracteres Unicode completos, incluindo emojis e acentos
 -- COLLATE utf8mb4_unicode_ci: Define regras de comparação case-insensitive e acento-insensitive
-CREATE DATABASE IF NOT EXISTS cdl_bh_fornecedores_java
+CREATE DATABASE cdl_bh_fornecedores_java
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
@@ -71,9 +74,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
   -- VARCHAR(255) é suficiente para hashes bcrypt (que têm 60 caracteres)
   senha_hash  VARCHAR(255)    NOT NULL,
   
-  -- Papel do usuário: 'admin' (acesso total) ou 'user' (acesso limitado)
+  -- Papel do usuário: 'ADMIN' (acesso total) ou 'USER' (acesso limitado)
   -- ENUM garante que só esses dois valores são aceitos
-  role        ENUM('admin','user') NOT NULL DEFAULT 'user',
+  role        ENUM('ADMIN','USER') NOT NULL DEFAULT 'USER',
   
   -- Timestamps automáticos
   created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -127,9 +130,9 @@ CREATE TABLE IF NOT EXISTS fornecedores (
   -- Ex: ["Fornecer materiais", "Doação de produtos"]
   permissao_para JSON            DEFAULT NULL,
   
-  -- Status do fornecedor: 'ativo' ou 'inativo'
+  -- Status do fornecedor: 'ATIVO' ou 'INATIVO'
   -- ENUM garante consistência dos valores
-  status         ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
+  status         ENUM('ATIVO','INATIVO') NOT NULL DEFAULT 'ATIVO',
   
   -- Timestamps automáticos
   created_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -239,14 +242,9 @@ ON DUPLICATE KEY UPDATE id = id;
 -- ============================================================
 -- DADOS INICIAIS: Usuário Admin
 -- ============================================================
--- Cria o usuário administrador padrão
--- Credenciais: admin@cdlbh.org.br / admin123
--- O hash bcrypt foi gerado usando BCryptPasswordEncoder com força 10
--- Hash: $2a$10$IPZO.LWKF01uaNdCC9nfgO3tk/NcxY2pwqGO3HDVQPUPwQdv5FeWK
+-- REMOVIDO: Usuário admin padrão não será criado automaticamente
+-- O sistema deve ter um processo de criação de usuários via interface
 -- ============================================================
-INSERT INTO usuarios (nome, email, senha_hash, role) VALUES
-('Administrador CDL BH', 'admin@cdlbh.org.br', '$2a$10$IPZO.LWKF01uaNdCC9nfgO3tk/NcxY2pwqGO3HDVQPUPwQdv5FeWK', 'admin')
-ON DUPLICATE KEY UPDATE id = id;
 
 -- ============================================================
 -- DADOS INICIAIS: Fornecedores de Exemplo

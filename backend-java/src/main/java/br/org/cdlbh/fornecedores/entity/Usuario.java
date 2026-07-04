@@ -47,8 +47,9 @@ public class Usuario {
      * Hash da senha (NUNCA armazenar senha em texto plano!)
      * - O hash é gerado usando BCryptPasswordEncoder
      * - length = 255: Suficiente para hashes bcrypt (60 caracteres)
+     * - name = "senha_hash": Mapeamento explícito para a coluna no banco (snake_case)
      */
-    @Column(nullable = false, length = 255)
+    @Column(name = "senha_hash", nullable = false, length = 255)
     private String senhaHash;
 
     /**
