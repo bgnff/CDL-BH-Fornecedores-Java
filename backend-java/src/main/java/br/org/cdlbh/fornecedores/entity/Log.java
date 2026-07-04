@@ -1,5 +1,6 @@
 package br.org.cdlbh.fornecedores.entity;
 
+import br.org.cdlbh.fornecedores.config.DetalhesLogConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -87,9 +88,10 @@ public class Log {
      * }
      * 
      * @Column com columnDefinition = "JSON": Define explicitamente que é JSON no MySQL
-     * O JPA converterá automaticamente o Map<String, Object> para JSON
+     * @Convert: Aplica o conversor DetalhesLogConverter para converter Map<String, Object> para JSON
      */
     @Column(columnDefinition = "JSON")
+    @Convert(converter = DetalhesLogConverter.class)
     private Map<String, Object> detalhes;
 
     /**
