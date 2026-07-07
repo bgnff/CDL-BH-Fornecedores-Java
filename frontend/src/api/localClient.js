@@ -34,6 +34,17 @@ export const fornecedoresAPI = {
   delete(id)       { return request('DELETE', `/fornecedores/${id}`); },
 };
 
+export const documentosAPI = {
+  list()                      { return request('GET', '/documentos'); },
+  listByFornecedor(fornecedorId) { return request('GET', `/documentos/fornecedor/${fornecedorId}`); },
+  get(id)                     { return request('GET', `/documentos/${id}`); },
+  create(data)                { return request('POST', '/documentos', data); },
+  update(id, data)            { return request('PUT', `/documentos/${id}`, data); },
+  delete(id)                  { return request('DELETE', `/documentos/${id}`); },
+  vencendo(dias = 30)         { return request('GET', `/documentos/vencendo?dias=${dias}`); },
+  vencidos()                  { return request('GET', '/documentos/vencidos'); },
+};
+
 export const backupAPI = {
   generate()            { return request('POST', '/backup/generate'); },
   list()                { return request('GET', '/backup/list'); },

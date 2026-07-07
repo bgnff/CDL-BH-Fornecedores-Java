@@ -218,6 +218,19 @@ public class FornecedorService {
     }
 
     /**
+     * Busca fornecedores por CNPJ (busca parcial, case-insensitive)
+     * 
+     * @param cnpj CNPJ ou parte do CNPJ
+     * @return Lista de FornecedorResponse
+     */
+    public List<FornecedorResponse> buscarPorCnpj(String cnpj) {
+        List<Fornecedor> fornecedores = fornecedorRepository.findByCnpjContainingIgnoreCase(cnpj);
+        return fornecedores.stream()
+                .map(FornecedorResponse::fromEntity)
+                .toList();
+    }
+
+    /**
      * Método auxiliar para comparar dois objetos de forma segura (trata null)
      */
     private boolean equal(Object a, Object b) {

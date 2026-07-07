@@ -22,8 +22,16 @@ export default function Fornecedores() {
 
   const filtered = fornecedores.filter(f => {
     const s = search.toLowerCase();
-    return (!search || f.nome?.toLowerCase().includes(s) || f.empresa_pf?.toLowerCase().includes(s) || f.palavra_chave?.toLowerCase().includes(s) || f.email?.toLowerCase().includes(s))
-      && (projeto === 'all' || f.projeto === projeto);
+    const matchSearch =
+      !search ||
+      f.nome?.toLowerCase().includes(s) ||
+      f.empresa_pf?.toLowerCase().includes(s) ||
+      f.palavra_chave?.toLowerCase().includes(s) ||
+      f.email?.toLowerCase().includes(s) ||
+      f.cnpj?.replace(/\D/g, "").includes(s.replace(/\D/g, "")) ||
+      f.cnpj?.toLowerCase().includes(s);
+    const matchProjeto = projeto === 'all' || f.projeto === projeto;
+    return matchSearch && matchProjeto;
   });
 
   return (

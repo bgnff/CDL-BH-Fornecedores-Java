@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Pencil, User, Building2, Mail, Phone, Tag, FolderOpen, FileText, Shield, Hash } from 'lucide-react';
 import { format } from 'date-fns';
+import DocumentosSection from '@/components/fornecedores/DocumentosSection';
 
 export default function FornecedorDetalhe() {
   const { id } = useParams();
@@ -69,6 +70,9 @@ export default function FornecedorDetalhe() {
           {fornecedor.created_at && <p className="text-xs text-muted-foreground pt-2 border-t border-border">Cadastrado em {format(new Date(fornecedor.created_at), "dd/MM/yyyy 'às' HH:mm")}</p>}
         </CardContent>
       </Card>
+
+      {/* Seção de Documentos e Contratos */}
+      <DocumentosSection fornecedorId={fornecedor.id} />
     </div>
   );
 }

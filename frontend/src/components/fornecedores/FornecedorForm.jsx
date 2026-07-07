@@ -25,6 +25,27 @@ const PROJETOS = [
 ];
 const PERMISSOES = ['Fornecer materiais','Prestar serviço','Doação de produtos','Consultoria','Transporte e logística','Alimentação','Outro'];
 
+function validarCNPJ(cnpj) {
+  const digits = cnpj.replace(/\D/g, "");
+  if (digits.length !== 14) return false;
+  if (/^(\d)\1+$/.test(digits)) return false;
+
+  const calc = (slice) => {
+    let soma = 0;
+    let pos = slice.length - 7;
+    for (let i = slice.length; i >= 1; i--) {
+      soma += parseInt(slice.charAt(slice.length - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    return soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  };
+
+  const base = digits.slice(0, 12);
+  const d1 = calc(base);
+  const d2 = calc(base + d1);
+  return digits === base + String(d1) + String(d2);
+}
+
 function formatPhone(value) {
   const d = value.replace(/\D/g, '').slice(0, 11);
   if (d.length <= 2) return d;
@@ -55,6 +76,15 @@ export default function FornecedorForm({ initialData, onSubmit, onCancel, isSubm
     if (!form.nome.trim()) e.nome = 'Nome é obrigatório';
     if (!form.empresa_pf.trim()) e.empresa_pf = 'Empresa/PF é obrigatório';
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'E-mail inválido';
+    if (form.telefone) {
+      const digits = form.telefone.replace(/\D/g, '');
+      if (digits.length < 10 || digits.length > 11) e.telefone = 'Telefone deve ter 10 ou 11 dígitos';
+    }
+    if (form.cnpj) {
+      const digits = form.cnpj.replace(/\D/g, '');
+      if (digits.length === 14 && !validarCNPJ(form.cnpj)) e.cnpj = 'CNPJ inválido — dígitos verificadores não conferem';
+      else if (digits.length > 0 && digits.length !== 14) e.cnpj = 'CNPJ deve ter 14 dígitos';
+    }
     setErrors(e); return Object.keys(e).length === 0;
   };
 
@@ -72,11 +102,11 @@ export default function FornecedorForm({ initialData, onSubmit, onCancel, isSubm
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2"><Label>E-mail</Label><Input type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => set('email', e.target.value)} className={errors.email ? 'border-destructive' : ''} />{errors.email && <p className="text-xs text-destructive">{errors.email}</p>}</div>
-            <div className="space-y-2"><Label>Telefone</Label><Input placeholder="(31) 99999-9999" value={form.telefone} onChange={e => set('telefone', formatPhone(e.target.value))} /></div>
+            <div className="space-y-2"><Label>Telefone</Label><Input placeholder="(31) 99999-9999" value={form.telefone} onChange={e => set('telefone', formatPhone(e.target.value))} className={errors.telefone ? 'border-destructive' : ''} />{errors.telefone && <p className="text-xs text-destructive">{errors.telefone}</p>}</div>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2"><Label>Palavra Chave</Label><Input placeholder="Ex.: fraldas, higiene" value={form.palavra_chave} onChange={e => set('palavra_chave', e.target.value)} /></div>
-            <div className="space-y-2"><Label>CNPJ</Label><Input placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => set('cnpj', formatCnpj(e.target.value))} /></div>
+            <div className="space-y-2"><Label>CNPJ</Label><Input placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => set('cnpj', formatCnpj(e.target.value))} className={errors.cnpj ? 'border-destructive' : ''} />{errors.cnpj && <p className="text-xs text-destructive">{errors.cnpj}</p>}</div>
             <div className="space-y-2"><Label>Projeto</Label><Select value={form.projeto} onValueChange={v => set('projeto', v)}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{PROJETOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select></div>
           </div>
           <div className="space-y-2"><Label>Status</Label><Select value={form.status} onValueChange={v => set('status', v)}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>

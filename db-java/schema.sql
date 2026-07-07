@@ -161,6 +161,59 @@ CREATE TABLE IF NOT EXISTS fornecedores (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: documentos
+-- ============================================================
+-- Armazena documentos vinculados aos fornecedores (contratos, certidões, etc.)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS documentos (
+  -- Chave primária auto-incrementada
+  id              INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+
+  -- Chave estrangeira para fornecedores
+  -- ON DELETE CASCADE: Se o fornecedor for excluído, exclui todos os documentos
+  fornecedor_id   INT UNSIGNED    NOT NULL,
+
+  -- Nome/descrição do documento
+  nome            VARCHAR(200)    NOT NULL,
+
+  -- Tipo de documento
+  tipo            ENUM('Contrato','Certidão','Nota Fiscal','Alvará','Outro') NOT NULL DEFAULT 'Outro',
+
+  -- Data de vencimento do documento (opcional)
+  data_vencimento DATE            DEFAULT NULL,
+
+  -- URL do arquivo armazenado (pode ser S3, local, etc.)
+  arquivo_url     VARCHAR(500)    DEFAULT NULL,
+
+  -- Observações adicionais sobre o documento
+  observacao      TEXT            DEFAULT NULL,
+
+  -- Timestamps automáticos
+  created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- Define a chave primária
+  PRIMARY KEY (id),
+
+  -- Chave estrangeira para fornecedores
+  CONSTRAINT fk_documento_fornecedor
+    FOREIGN KEY (fornecedor_id)
+    REFERENCES fornecedores(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+
+  -- Índice no campo fornecedor_id - acelera buscas de documentos por fornecedor
+  INDEX idx_fornecedor (fornecedor_id),
+
+  -- Índice no campo data_vencimento - acelera buscas de documentos vencendo
+  INDEX idx_vencimento (data_vencimento),
+
+  -- Índice no campo tipo - acelera filtros por tipo de documento
+  INDEX idx_tipo (tipo)
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- TABELA: logs
 -- ============================================================
 -- Auditoria de todas as ações no sistema (CREATE, UPDATE, DELETE)
