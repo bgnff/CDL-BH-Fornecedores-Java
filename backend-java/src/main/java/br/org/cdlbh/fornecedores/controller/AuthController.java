@@ -49,14 +49,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, 
                                    HttpServletRequest httpRequest) {
-        // Rate limiting: verifica se o IP excedeu o limite
-        Bucket bucket = rateLimitConfig.resolveBucket(httpRequest);
-        if (!bucket.tryConsume(1)) {
-            // Se o balde estiver vazio, retorna 429 Too Many Requests
-            return ResponseEntity.status(429).body(
-                    new br.org.cdlbh.fornecedores.dto.ErrorResponse("Muitas tentativas de login. Tente novamente em 15 minutos.")
-            );
-        }
+        // Rate limiting temporariamente desabilitado para debug
+        // Bucket bucket = rateLimitConfig.resolveBucket(httpRequest);
+        // if (!bucket.tryConsume(1)) {
+        //     // Se o balde estiver vazio, retorna 429 Too Many Requests
+        //     return ResponseEntity.status(429).body(
+        //             new br.org.cdlbh.fornecedores.dto.ErrorResponse("Muitas tentativas de login. Tente novamente em 15 minutos.")
+        //     );
+        // }
 
         // Chama o service para processar o login
         LoginResponse response = authService.login(request);

@@ -90,9 +90,9 @@ public class FornecedorService {
         
         // Define o status
         if (request.getStatus() != null) {
-            fornecedor.setStatus(Fornecedor.Status.valueOf(request.getStatus().toUpperCase()));
+            fornecedor.setStatus(Fornecedor.Status.valueOf(request.getStatus().toLowerCase()));
         } else {
-            fornecedor.setStatus(Fornecedor.Status.ATIVO);
+            fornecedor.setStatus(Fornecedor.Status.ativo);
         }
 
         // Salva no banco

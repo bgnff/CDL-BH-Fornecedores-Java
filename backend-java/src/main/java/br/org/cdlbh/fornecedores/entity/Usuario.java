@@ -75,12 +75,15 @@ public class Usuario {
 
     /**
      * Enum que define os papéis possíveis no sistema
-     * - ADMIN: Acesso total (pode criar, editar, excluir fornecedores e gerar backups)
-     * - USER: Acesso limitado (pode apenas visualizar e criar fornecedores)
+     * - admin: Acesso total (pode criar, editar, excluir fornecedores e gerar backups)
+     * - user: Acesso limitado (pode apenas visualizar e criar fornecedores)
+     * 
+     * IMPORTANTE: Os valores estão em lowercase para compatibilidade com o banco
+     * O banco usa ENUM('admin','user') em lowercase
      */
     public enum Role {
-        ADMIN,
-        USER
+        admin,
+        user
     }
 
     /**

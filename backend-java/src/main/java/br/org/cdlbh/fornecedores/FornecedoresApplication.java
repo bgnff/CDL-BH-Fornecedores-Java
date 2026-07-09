@@ -2,6 +2,7 @@ package br.org.cdlbh.fornecedores;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
@@ -19,8 +20,15 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * 
  * @EnableScheduling: Habilita suporte a tarefas agendadas (scheduled tasks)
  * Necessário para o backup automático que roda a cada hora
+ * 
+ * EXCLUSÃO DE AUTO-CONFIGURAÇÃO:
+ * - UserDetailsServiceAutoConfiguration: Excluímos esta auto-configuração
+ *   porque este projeto usa autenticação 100% via JWT (JwtAuthenticationFilter),
+ *   não pelo mecanismo padrão do Spring Security que usa UserDetailsService.
+ *   Sem essa exclusão, o Spring Boot geraria um warning "Using generated security password"
+ *   e criaria um UserDetailsService padrão que não é usado.
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = {UserDetailsServiceAutoConfiguration.class})
 @EnableScheduling
 public class FornecedoresApplication {
 

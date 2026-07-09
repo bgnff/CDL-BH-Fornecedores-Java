@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 function getToken() { return localStorage.getItem('cdlbh_token'); }
 function setToken(t) { localStorage.setItem('cdlbh_token', t); }

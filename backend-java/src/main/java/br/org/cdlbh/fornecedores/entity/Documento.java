@@ -90,13 +90,16 @@ public class Documento {
 
     /**
      * Enum que define os tipos possíveis de documento
+     * 
+     * IMPORTANTE: Os valores estão em Title Case para compatibilidade com o banco
+     * O banco usa ENUM('Contrato','Certidão','Nota Fiscal','Alvará','Outro')
      */
     public enum Tipo {
-        CONTRATO,
-        CERTIDAO,
-        NOTA_FISCAL,
-        ALVARA,
-        OUTRO
+        Contrato,
+        Certidão,
+        Nota_Fiscal,
+        Alvará,
+        Outro
     }
 
     /**
@@ -107,9 +110,9 @@ public class Documento {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         
-        // Define tipo padrão como OUTRO se não foi definido
+        // Define tipo padrão como Outro se não foi definido
         if (tipo == null) {
-            tipo = Tipo.OUTRO;
+            tipo = Tipo.Outro;
         }
     }
 

@@ -46,11 +46,62 @@ Saída esperada:
 +----------------------------+
 | Tables_in_cdl_bh_fornecedores_java |
 +----------------------------+
+| backup_metadata            |
+| documentos                 |
 | fornecedores              |
 | logs                      |
 | projetos                  |
 | usuarios                  |
 +----------------------------+
+```
+
+---
+
+## 2.1 CONFIGURAÇÃO DO BINARY LOG (BINLOG) - PRÉ-REQUISITO PARA BACKUPS INCREMENTAIS
+
+Para que backups incrementais funcionem, o **binary log** deve estar habilitado no MySQL.
+
+### O que é o Binary Log?
+
+O binlog é um arquivo sequencial que registra todas as alterações no banco (INSERT/UPDATE/DELETE/DDL). Cada evento no binlog tem uma posição única. Backups incrementais usam essas posições para saber "de onde" começar a capturar mudanças.
+
+### Como habilitar no MySQL (Windows)
+
+1. Abra o arquivo `my.ini` (geralmente em `C:\ProgramData\MySQL\MySQL Server 8.0\my.ini`)
+2. Adicione ou modifique as seguintes linhas na seção `[mysqld]`:
+
+```ini
+[mysqld]
+log-bin=mysql-bin
+server-id=1
+binlog_expire_logs_seconds=604800
+```
+
+3. Reinicie o serviço MySQL:
+```bash
+net stop MySQL80
+net start MySQL80
+```
+
+### Explicação das configurações
+
+- `log-bin=mysql-bin`: Habilita o binary log com prefixo "mysql-bin"
+- `server-id=1`: Identificador único do servidor (obrigatório para binlog)
+- `binlog_expire_logs_seconds=604800`: Mantém 7 dias de binlogs (604800 segundos), depois expira automaticamente
+
+### Verificar se o binlog está ativo
+
+```bash
+mysql -u root -p -e "SHOW VARIABLES LIKE 'log_bin';"
+```
+
+Saída esperada:
+```
++---------------+-------+
+| Variable_name | Value |
++---------------+-------+
+| log_bin       | ON    |
++---------------+-------+
 ```
 
 ---
@@ -216,6 +267,63 @@ mysqldump -u root -p cdl_bh_fornecedores_java > backup_manual.sql
 
 ---
 
+## 5.1 POLÍTICA DE BACKUP AUTOMÁTICO
+
+O sistema implementa uma política de backup híbrida (FULL + INCREMENTAL):
+
+### Horários dos Backups
+
+- **Backup FULL**: Todos os dias às 01:00 da manhã
+  - Gera um dump completo do banco via `mysqldump`
+  - Arquivo maior, demora mais para gerar
+  - Contém todos os dados do banco no momento do backup
+  - Cron: `0 0 1 * * *`
+
+- **Backup INCREMENTAL**: De 3 em 3 horas (08:00, 11:00, 14:00, 17:00, 20:00, 23:00)
+  - Gera apenas as mudanças desde o último backup via `mysqlbinlog`
+  - Arquivo pequeno, rápido para gerar
+  - Contém apenas as alterações (INSERT/UPDATE/DELETE/DDL) desde o último backup
+  - Cron: `0 0 8,11,14,17,20,23 * * *`
+
+### Diferença entre FULL e INCREMENTAL
+
+| Tipo | Descrição | Vantagens | Desvantagens |
+|------|-----------|-----------|--------------|
+| **FULL** | Dump completo do banco via mysqldump | Restauração simples e rápida | Arquivo grande, demora mais para gerar |
+| **INCREMENTAL** | Apenas mudanças via binary log (binlog) | Arquivo pequeno, rápido para gerar | Restauração requer aplicar FULL + incrementais em ordem |
+
+### Como Funciona a Restauração
+
+Para restaurar o banco a um ponto específico:
+
+1. **Restaurar o último backup FULL**
+   ```bash
+   mysql -u root -p cdl_bh_fornecedores_java < backup_2024-01-15T01-00-00-000.sql
+   ```
+
+2. **Aplicar os incrementais em ordem cronológica**
+   ```bash
+   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T08-00-00-000.sql
+   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T11-00-00-000.sql
+   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T14-00-00-000.sql
+   # ... e assim por diante até o ponto desejado
+   ```
+
+**Importante:** Os incrementais devem ser aplicados **na ordem cronológica** correta, do mais antigo para o mais recente.
+
+### Metadados de Backup
+
+O sistema mantém uma tabela `backup_metadata` que rastreia cada backup executado:
+- `tipo`: FULL ou INCREMENTAL
+- `arquivo`: Nome do arquivo gerado
+- `binlog_file`: Nome do arquivo de binlog no momento do backup
+- `binlog_position`: Posição dentro do binlog (ponto de partida para o próximo incremental)
+- `executado_em`: Timestamp de quando o backup foi executado
+
+Esta tabela é essencial para que o sistema saiba de onde cada backup incremental deve começar.
+
+---
+
 ## 6. VERIFICAR BACKUPS GERADOS
 
 ### Via linha de comando
@@ -332,10 +440,35 @@ mysqldump --version
 # Se não estiver, configure o caminho completo em application.properties:
 mysql.mysqldump-path=C:/Program Files/MySQL/MySQL Server 8.0/bin/mysqldump.exe
 
+# Verificar se mysqlbinlog está no PATH (para backups incrementais)
+mysqlbinlog --version
+
+# Se não estiver, configure o caminho completo em application.properties:
+mysql.mysqlbinlog-path=C:/Program Files/MySQL/MySQL Server 8.0/bin/mysqlbinlog.exe
+
 # Verificar se o diretório de backups existe
 cd c:/Users/bgn/Desktop/FCDL-BH-Java/backups
 dir
 ```
+
+### Erro 404 em endpoint que deveria existir
+
+Se você receber 404 Not Found em um endpoint que existe no código (ex: `/api/auth/me`), o problema geralmente é que o Maven não recompilou o código-fonte antes de rodar:
+
+```bash
+# Solução: limpar e recompilar antes de rodar
+cd c:/Users/bgn/Desktop/FCDL-BH-Java/backend-java
+mvn clean spring-boot:run
+```
+
+**Por que isso acontece?**
+- O Maven pode não recompilar se os arquivos `.class` na pasta `target/` já estiverem atualizados
+- Isso pode acontecer após alterações no código que adicionam novos endpoints
+- O `mvn clean` apaga a pasta `target/`, garantindo um build 100% limpo
+
+**Prevenção futura:**
+- Sempre que adicionar um novo endpoint ou modificar rotas existentes, use `mvn clean spring-boot:run`
+- Isso evita perder tempo depurando um problema que já não existe no código-fonte atual
 
 ---
 

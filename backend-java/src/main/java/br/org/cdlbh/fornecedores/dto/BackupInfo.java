@@ -30,4 +30,12 @@ public class BackupInfo {
      * Data/hora de criação do backup
      */
     private LocalDateTime created;
+
+    /**
+     * Tipo do backup: FULL ou INCREMENTAL
+     * 
+     * FULL: Dump completo do banco via mysqldump
+     * INCREMENTAL: Apenas as mudanças desde o último backup via binlog
+     */
+    private String tipo;
 }

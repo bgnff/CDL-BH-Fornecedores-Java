@@ -1,27 +1,42 @@
 package br.org.cdlbh.fornecedores.service;
 
 import br.org.cdlbh.fornecedores.dto.BackupInfo;
+import br.org.cdlbh.fornecedores.entity.BackupMetadata;
+import br.org.cdlbh.fornecedores.repository.BackupMetadataRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
  * Service de backup do banco de dados
  * 
- * Responsável por gerar e gerenciar backups usando mysqldump
+ * Responsável por gerar e gerenciar backups usando mysqldump (FULL)
+ * e mysqlbinlog (INCREMENTAL)
+ * 
+ * POLÍTICA DE BACKUP:
+ * - FULL: Todos os dias às 01:00 da manhã
+ * - INCREMENTAL: De 3 em 3 horas (08:00, 11:00, 14:00, 17:00, 20:00, 23:00)
  */
 @Service
 public class BackupService {
@@ -41,8 +56,19 @@ public class BackupService {
     @Value("${mysql.mysqldump-path:mysqldump}")
     private String mysqldumpPath;
 
+    @Value("${mysql.mysqlbinlog-path:mysqlbinlog}")
+    private String mysqlbinlogPath;
+
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private BackupMetadataRepository backupMetadataRepository;
+
     /**
-     * Gera um backup do banco de dados usando mysqldump
+     * Gera um backup FULL do banco de dados usando mysqldump
+     * 
+     * Este método é chamado manualmente via endpoint ou pelo job agendado
      * 
      * @return Nome do arquivo de backup gerado
      * @throws RuntimeException se houver erro ao gerar o backup
@@ -114,7 +140,218 @@ public class BackupService {
     }
 
     /**
+     * Job agendado para backup FULL - executa todos os dias às 01:00 da manhã
+     * 
+     * @Scheduled: Indica que este método deve ser executado automaticamente
+     * cron = "0 0 1 * * *": Segundos Minutos Hora DiaDoMes Mes DiaDaSemana
+     * - 0: Segundos = 0
+     * - 0: Minutos = 0
+     * - 1: Hora = 1 (01:00 da manhã)
+     * - *: Dia do mês = todos os dias
+     * - *: Mês = todos os meses
+     * - *: Dia da semana = todos os dias da semana
+     * 
+     * Este job:
+     * 1. Executa mysqldump para gerar backup completo
+     * 2. Captura o binlog_file e binlog_position atual via SHOW MASTER STATUS
+     * 3. Salva metadados na tabela backup_metadata
+     */
+    @Scheduled(cron = "0 0 1 * * *")
+    @Transactional
+    public void backupFullAgendado() {
+        try {
+            // Gera o backup FULL
+            String filename = gerarBackup();
+            
+            // Captura o binlog_file e binlog_position atual
+            // Isso é necessário para que o próximo incremental saiba de onde começar
+            BinlogInfo binlogInfo = capturarBinlogStatus();
+            
+            // Salva metadados do backup
+            BackupMetadata metadata = new BackupMetadata();
+            metadata.setTipo(BackupMetadata.Tipo.FULL);
+            metadata.setArquivo(filename);
+            metadata.setBinlogFile(binlogInfo.file);
+            metadata.setBinlogPosition(binlogInfo.position);
+            
+            backupMetadataRepository.save(metadata);
+            
+            System.out.println("Backup FULL gerado com sucesso: " + filename);
+            
+        } catch (Exception e) {
+            System.err.println("Erro ao gerar backup FULL agendado: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Job agendado para backup INCREMENTAL - executa de 3 em 3 horas
+     * Horários: 08:00, 11:00, 14:00, 17:00, 20:00, 23:00
+     * 
+     * @Scheduled: Indica que este método deve ser executado automaticamente
+     * cron = "0 0 8,11,14,17,20,23 * * *": Segundos Minutos Hora DiaDoMes Mes DiaDaSemana
+     * - 0: Segundos = 0
+     * - 0: Minutos = 0
+     * - 8,11,14,17,20,23: Horas = 08:00, 11:00, 14:00, 17:00, 20:00, 23:00
+     * - *: Dia do mês = todos os dias
+     * - *: Mês = todos os meses
+     * - *: Dia da semana = todos os dias da semana
+     * 
+     * Este job:
+     * 1. Busca o último backup (FULL ou INCREMENTAL) para saber de onde começar
+     * 2. Executa mysqlbinlog para exportar apenas as mudanças desde o último backup
+     * 3. Captura o novo binlog_file e binlog_position
+     * 4. Salva metadados na tabela backup_metadata
+     */
+    @Scheduled(cron = "0 0 8,11,14,17,20,23 * * *")
+    @Transactional
+    public void backupIncrementalAgendado() {
+        try {
+            // Busca o último backup executado
+            Optional<BackupMetadata> ultimoBackupOpt = backupMetadataRepository.findFirstByOrderByExecutadoEmDesc();
+            
+            if (ultimoBackupOpt.isEmpty()) {
+                System.err.println("Não há backup anterior para gerar incremental. Execute um backup FULL primeiro.");
+                return;
+            }
+            
+            BackupMetadata ultimoBackup = ultimoBackupOpt.get();
+            
+            // Gera o backup INCREMENTAL usando mysqlbinlog
+            String filename = gerarBackupIncremental(ultimoBackup);
+            
+            // Captura o novo binlog_file e binlog_position
+            BinlogInfo binlogInfo = capturarBinlogStatus();
+            
+            // Salva metadados do backup
+            BackupMetadata metadata = new BackupMetadata();
+            metadata.setTipo(BackupMetadata.Tipo.INCREMENTAL);
+            metadata.setArquivo(filename);
+            metadata.setBinlogFile(binlogInfo.file);
+            metadata.setBinlogPosition(binlogInfo.position);
+            
+            backupMetadataRepository.save(metadata);
+            
+            System.out.println("Backup INCREMENTAL gerado com sucesso: " + filename);
+            
+        } catch (Exception e) {
+            System.err.println("Erro ao gerar backup INCREMENTAL agendado: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Gera um backup INCREMENTAL usando mysqlbinlog
+     * 
+     * mysqlbinlog é uma ferramenta que extrai eventos do binary log (binlog)
+     * O binlog registra todas as alterações (INSERT/UPDATE/DELETE/DDL) no banco
+     * 
+     * @param ultimoBackup O último backup executado (ponto de partida)
+     * @return Nome do arquivo de backup incremental gerado
+     * @throws RuntimeException se houver erro ao gerar o backup
+     */
+    private String gerarBackupIncremental(BackupMetadata ultimoBackup) {
+        try {
+            // Cria o diretório de backups se não existir
+            Path backupDir = Paths.get(backupDirectory);
+            if (!Files.exists(backupDir)) {
+                Files.createDirectories(backupDir);
+            }
+
+            // Gera o nome do arquivo com timestamp
+            // Formato: incremental_2024-01-15T10-30-00-000.sql
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME).replace(":", "-").replace(".", "-");
+            String filename = "incremental_" + timestamp + ".sql";
+            Path filepath = backupDir.resolve(filename);
+
+            // Sanitização do binlog_file para prevenir command injection
+            String sanitizedBinlogFile = sanitizarString(ultimoBackup.getBinlogFile());
+            
+            // Executa mysqlbinlog usando ProcessBuilder
+            // --start-position: Começa a partir da posição especificada
+            // Isso captura apenas as mudanças desde o último backup
+            ProcessBuilder processBuilder = new ProcessBuilder(
+                    mysqlbinlogPath,
+                    "--start-position=" + ultimoBackup.getBinlogPosition(),
+                    sanitizedBinlogFile
+            );
+
+            // Redireciona a saída para o arquivo
+            processBuilder.redirectOutput(filepath.toFile());
+
+            // Executa o processo
+            Process process = processBuilder.start();
+
+            // Aguarda o processo terminar
+            int exitCode = process.waitFor();
+
+            if (exitCode != 0) {
+                // Lê o erro se houver
+                BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+                StringBuilder error = new StringBuilder();
+                String line;
+                while ((line = errorReader.readLine()) != null) {
+                    error.append(line).append("\n");
+                }
+                throw new RuntimeException("Erro ao gerar backup incremental: " + error.toString());
+            }
+
+            return filename;
+
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Erro ao gerar backup incremental: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Captura o status atual do binary log (binlog)
+     * 
+     * Executa o comando SQL "SHOW MASTER STATUS" para obter:
+     * - File: Nome do arquivo de binlog atual (ex: mysql-bin.000123)
+     * - Position: Posição atual dentro do binlog
+     * 
+     * Essas informações são necessárias para saber de onde o próximo
+     * backup incremental deve começar
+     * 
+     * @return BinlogInfo com file e position
+     * @throws RuntimeException se houver erro ao capturar o status
+     */
+    private BinlogInfo capturarBinlogStatus() {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SHOW MASTER STATUS")) {
+            
+            if (resultSet.next()) {
+                String file = resultSet.getString("File");
+                long position = resultSet.getLong("Position");
+                return new BinlogInfo(file, position);
+            } else {
+                throw new RuntimeException("Não foi possível obter o status do binlog. Verifique se o binary log está habilitado no MySQL.");
+            }
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao capturar status do binlog: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Classe auxiliar para armazenar informações do binlog
+     */
+    private static class BinlogInfo {
+        String file;
+        long position;
+        
+        BinlogInfo(String file, long position) {
+            this.file = file;
+            this.position = position;
+        }
+    }
+
+    /**
      * Lista todos os arquivos de backup existentes
+     * 
+     * Este método agora inclui informações do tipo de backup (FULL/INCREMENTAL)
+     * consultando a tabela backup_metadata
      * 
      * @return Lista de informações dos backups
      */
@@ -127,6 +364,15 @@ public class BackupService {
         }
 
         try {
+            // Busca todos os metadados de backups do banco
+            List<BackupMetadata> metadados = backupMetadataRepository.findAll();
+            
+            // Cria um mapa de arquivo -> tipo para busca rápida
+            java.util.Map<String, BackupMetadata.Tipo> arquivoParaTipo = new java.util.HashMap<>();
+            for (BackupMetadata meta : metadados) {
+                arquivoParaTipo.put(meta.getArquivo(), meta.getTipo());
+            }
+
             // Lista todos os arquivos .sql no diretório
             Files.list(backupDir)
                     .filter(path -> path.toString().endsWith(".sql"))
@@ -136,17 +382,30 @@ public class BackupService {
                             info.setFilename(path.getFileName().toString());
                             info.setSize(Files.size(path));
                             info.setCreated(LocalDateTime.ofInstant(Instant.ofEpochMilli(Files.getLastModifiedTime(path).toMillis()), ZoneId.systemDefault()));
+                            
+                            // Define o tipo do backup se existir nos metadados
+                            BackupMetadata.Tipo tipo = arquivoParaTipo.get(path.getFileName().toString());
+                            if (tipo != null) {
+                                info.setTipo(tipo.name());
+                            } else {
+                                // Se não estiver nos metadados, tenta inferir pelo nome do arquivo
+                                if (path.getFileName().toString().startsWith("incremental_")) {
+                                    info.setTipo("INCREMENTAL");
+                                } else {
+                                    info.setTipo("FULL");
+                                }
+                            }
+                            
                             backups.add(info);
-                        } catch (IOException e) {
-                            // Ignora arquivos que não conseguimos ler
+                        } catch (Exception e) {
+                            // Ignora erros ao ler metadados de arquivo individual
+                            System.err.println("Erro ao ler metadados do arquivo " + path.getFileName() + ": " + e.getMessage());
                         }
                     });
-
-            // Ordena por data de criação (mais recentes primeiro)
-            backups.sort((a, b) -> b.getCreated().compareTo(a.getCreated()));
-
-        } catch (IOException e) {
-            // Se der erro ao listar, retorna lista vazia
+        } catch (Exception e) {
+            // Se houver erro ao listar backups, retorna lista vazia
+            System.err.println("Erro ao listar backups: " + e.getMessage());
+            e.printStackTrace();
         }
 
         return backups;
@@ -185,20 +444,23 @@ public class BackupService {
     /**
      * Valida se o nome do arquivo está no formato correto
      * 
-     * Formato esperado: backup_YYYY-MM-DDTHH-MM-SS-SSSZ.sql
+     * Formato esperado para FULL: backup_YYYY-MM-DDTHH-MM-SS-SSSZ.sql
      * Exemplo: backup_2024-01-15T10-30-00-000.sql
+     * 
+     * Formato esperado para INCREMENTAL: incremental_YYYY-MM-DDTHH-MM-SS-SSSZ.sql
+     * Exemplo: incremental_2024-01-15T10-30-00-000.sql
      * 
      * @param filename Nome do arquivo
      * @return true se válido, false caso contrário
      */
     private boolean isValidFilename(String filename) {
-        // Regex que valida o formato do nome do arquivo
-        // ^backup_: começa com "backup_"
+        // Regex que valida o formato do nome do arquivo (aceita FULL e INCREMENTAL)
+        // ^(backup_|incremental_): começa com "backup_" ou "incremental_"
         // \\d{4}-\\d{2}-\\d{2}: data no formato YYYY-MM-DD
         // T: separador
         // \\d{2}-\\d{2}-\\d{2}-\\d{3}: hora no formato HH-MM-SS-SSS
         // \\.sql$: termina com ".sql"
-        Pattern pattern = Pattern.compile("^backup_\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z\\.sql$");
+        Pattern pattern = Pattern.compile("^(backup_|incremental_)\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z\\.sql$");
         return pattern.matcher(filename).matches();
     }
 
