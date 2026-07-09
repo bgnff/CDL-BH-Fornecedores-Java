@@ -4,8 +4,6 @@ import br.org.cdlbh.fornecedores.dto.LoginRequest;
 import br.org.cdlbh.fornecedores.dto.LoginResponse;
 import br.org.cdlbh.fornecedores.dto.UserResponse;
 import br.org.cdlbh.fornecedores.service.AuthService;
-import io.github.bucket4j.Bucket;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +30,6 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
-    @Autowired
-    private br.org.cdlbh.fornecedores.config.RateLimitConfig rateLimitConfig;
-
     /**
      * Endpoint de login
      * 
@@ -47,17 +42,7 @@ public class AuthController {
      * @return LoginResponse com token JWT e dados do usuário
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, 
-                                   HttpServletRequest httpRequest) {
-        // Rate limiting temporariamente desabilitado para debug
-        // Bucket bucket = rateLimitConfig.resolveBucket(httpRequest);
-        // if (!bucket.tryConsume(1)) {
-        //     // Se o balde estiver vazio, retorna 429 Too Many Requests
-        //     return ResponseEntity.status(429).body(
-        //             new br.org.cdlbh.fornecedores.dto.ErrorResponse("Muitas tentativas de login. Tente novamente em 15 minutos.")
-        //     );
-        // }
-
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         // Chama o service para processar o login
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);
