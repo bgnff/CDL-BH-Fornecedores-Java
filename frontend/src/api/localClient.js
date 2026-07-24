@@ -9,9 +9,13 @@ async function request(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(`${BASE_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  if (res.status === 401) { removeToken(); window.location.href = '/login'; return; }
+  if (res.status === 401) { 
+    removeToken(); 
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || data.message || 'Não autorizado');
+  }
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Erro na requisição');
+  if (!res.ok) throw new Error(data.error || data.message || 'Erro na requisição');
   return data;
 }
 

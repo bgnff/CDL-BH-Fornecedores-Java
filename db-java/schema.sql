@@ -11,10 +11,13 @@
 -- Este schema será usado em PRODUÇÃO pela Fundação CDL-BH.
 -- ============================================================
 
+-- Remove o banco de dados existente para recriação limpa
+DROP DATABASE IF EXISTS cdl_bh_fornecedores_java;
+
 -- Criação do banco de dados
 -- CHARACTER SET utf8mb4: Suporta caracteres Unicode completos, incluindo emojis e acentos
 -- COLLATE utf8mb4_unicode_ci: Define regras de comparação case-insensitive e acento-insensitive
-CREATE DATABASE IF NOT EXISTS cdl_bh_fornecedores_java
+CREATE DATABASE cdl_bh_fornecedores_java
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
@@ -71,9 +74,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
   -- VARCHAR(255) é suficiente para hashes bcrypt (que têm 60 caracteres)
   senha_hash  VARCHAR(255)    NOT NULL,
   
-  -- Papel do usuário: 'admin' (acesso total) ou 'user' (acesso limitado)
+  -- Papel do usuário: 'ADMIN' (acesso total) ou 'USER' (acesso limitado)
   -- ENUM garante que só esses dois valores são aceitos
-  role        ENUM('admin','user') NOT NULL DEFAULT 'user',
+  role        ENUM('ADMIN','USER') NOT NULL DEFAULT 'USER',
   
   -- Timestamps automáticos
   created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -127,9 +130,9 @@ CREATE TABLE IF NOT EXISTS fornecedores (
   -- Ex: ["Fornecer materiais", "Doação de produtos"]
   permissao_para JSON            DEFAULT NULL,
   
-  -- Status do fornecedor: 'ativo' ou 'inativo'
+  -- Status do fornecedor: 'ATIVO' ou 'INATIVO'
   -- ENUM garante consistência dos valores
-  status         ENUM('ativo','inativo') NOT NULL DEFAULT 'ativo',
+  status         ENUM('ATIVO','INATIVO') NOT NULL DEFAULT 'ATIVO',
   
   -- Timestamps automáticos
   created_at     DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,

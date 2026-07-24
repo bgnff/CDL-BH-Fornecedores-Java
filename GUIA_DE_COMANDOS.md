@@ -227,13 +227,86 @@ Use: https://bcrypt-generator.com/
 ```sql
 USE cdl_bh_fornecedores_java;
 
-INSERT INTO usuarios (nome, email, senha_hash, role) VALUES
-('Nome do Usuário', 'email@exemplo.com', '$2a$10$SEU_HASH_AQUI', 'user');
+INSERT INTO usuarios (nome, email, senha_hash, role, created_at, updated_at) VALUES
+('Nome do Usuário', 'email@exemplo.com', '$2a$10$SEU_HASH_AQUI', 'ADMIN', NOW(), NOW());
+```
+
+**IMPORTANTE:** O campo `role` deve ser em maiúsculo: 'ADMIN' ou 'USER'
+
+---
+
+## 5. GERENCIAMENTO DE USUÁRIOS
+
+### Listar todos os usuários
+
+```sql
+USE cdl_bh_fornecedores_java;
+SELECT id, nome, email, role, created_at FROM usuarios;
+```
+
+### Atualizar nome do usuário
+
+```sql
+USE cdl_bh_fornecedores_java;
+UPDATE usuarios SET nome = 'Novo Nome' WHERE email = 'email@exemplo.com';
+```
+
+### Atualizar email do usuário
+
+```sql
+USE cdl_bh_fornecedores_java;
+UPDATE usuarios SET email = 'novo_email@exemplo.com' WHERE email = 'email_antigo@exemplo.com';
+```
+
+### Atualizar senha do usuário
+
+**IMPORTANTE:** Primeiro gere o hash bcrypt da nova senha (veja seção 4 acima), depois:
+
+```sql
+USE cdl_bh_fornecedores_java;
+UPDATE usuarios SET senha_hash = '$2a$10$NOVO_HASH_AQUI' WHERE email = 'email@exemplo.com';
+```
+
+### Atualizar role do usuário
+
+```sql
+USE cdl_bh_fornecedores_java;
+UPDATE usuarios SET role = 'ADMIN' WHERE email = 'email@exemplo.com';
+
+-- Ou para USER:
+UPDATE usuarios SET role = 'USER' WHERE email = 'email@exemplo.com';
+```
+
+**IMPORTANTE:** O campo `role` deve ser em maiúsculo: 'ADMIN' ou 'USER'
+
+### Deletar usuário
+
+```sql
+USE cdl_bh_fornecedores_java;
+DELETE FROM usuarios WHERE email = 'email@exemplo.com';
+```
+
+### Criar novo usuário completo
+
+```sql
+USE cdl_bh_fornecedores_java;
+INSERT INTO usuarios (nome, email, senha_hash, role, created_at, updated_at) VALUES
+('João Silva', 'joao.silva@cdlbh.org.br', '$2a$10$IPZO.LWKF01uaNdCC9nfgO3tk/NcxY2pwqGO3HDVQPUPwQdv5FeWK', 'USER', NOW(), NOW());
+```
+
+### Via linha de comando (executar arquivo SQL)
+
+```bash
+# Criar arquivo SQL com os comandos
+# Exemplo: c:\Users\bgn\Desktop\FCDL-BH-Java\db-java\update_user.sql
+
+# Executar
+cmd /c "mysql -u root cdl_bh_fornecedores_java < c:\Users\bgn\Desktop\FCDL-BH-Java\db-java\update_user.sql"
 ```
 
 ---
 
-## 5. GERAR BACKUP MANUAL
+## 6. GERAR BACKUP MANUAL
 
 ### Via API (requer autenticação de admin)
 
@@ -347,7 +420,7 @@ curl -X GET http://localhost:8080/api/backup/list \
 
 ---
 
-## 7. COMANDOS ÚTEIS DO MAVEN
+## 8. COMANDOS ÚTEIS DO MAVEN
 
 ```bash
 cd c:/Users/bgn/Desktop/FCDL-BH-Java/backend-java
@@ -373,7 +446,7 @@ mvn dependency:tree
 
 ---
 
-## 8. COMANDOS ÚTEIS DO NPM (Frontend)
+## 9. COMANDOS ÚTEIS DO NPM (Frontend)
 
 ```bash
 cd c:/Users/bgn/Desktop/FCDL-BH-Java/frontend
@@ -392,7 +465,7 @@ npm run preview
 
 ---
 
-## 9. SOLUÇÃO DE PROBLEMAS
+## 10. SOLUÇÃO DE PROBLEMAS
 
 ### Backend não inicia (erro de conexão com MySQL)
 
@@ -472,7 +545,7 @@ mvn clean spring-boot:run
 
 ---
 
-## 10. FLUXO COMPLETO DE TESTE
+## 11. FLUXO COMPLETO DE TESTE
 
 Após configurar tudo, teste o fluxo completo:
 
@@ -494,7 +567,7 @@ Após configurar tudo, teste o fluxo completo:
 
 ---
 
-## 11. PARAR SERVIÇOS
+## 12. PARAR SERVIÇOS
 
 ```bash
 # Parar backend: Ctrl+C no terminal onde está rodando
@@ -507,7 +580,7 @@ Após configurar tudo, teste o fluxo completo:
 
 ---
 
-## 12. LIMPAR E REINICIAR
+## 13. LIMPAR E REINICIAR
 
 ```bash
 # Limpar tudo e recomeçar
