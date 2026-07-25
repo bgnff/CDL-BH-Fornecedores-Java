@@ -57,6 +57,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response, 
                                     FilterChain filterChain) throws ServletException, IOException {
         
+        // Pula validação de token para endpoints públicos
+        String path = request.getRequestURI();
+        if (path.equals("/api/auth/login") || path.equals("/api/health")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         // Extrai o header Authorization da requisição
         String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
 
@@ -81,7 +88,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(
                                     userId, 
                                     null, 
-                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
                             );
 
                     // Adiciona detalhes da requisição (IP, session ID, etc.)

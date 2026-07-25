@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS documentos (
   nome            VARCHAR(200)    NOT NULL,
 
   -- Tipo de documento
-  tipo            ENUM('Contrato','Certidão','Nota Fiscal','Alvará','Outro') NOT NULL DEFAULT 'Outro',
+  tipo            ENUM('Contrato','Certidão','Nota_Fiscal','Alvará','Outro') NOT NULL DEFAULT 'Outro',
 
   -- Data de vencimento do documento (opcional)
   data_vencimento DATE            DEFAULT NULL,

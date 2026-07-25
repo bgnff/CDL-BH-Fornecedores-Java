@@ -96,11 +96,9 @@ public class DocumentoService {
     @Transactional
     @SuppressWarnings("null")
     public Documento criar(Documento documento, Long fornecedorId, Long usuarioId, String usuarioNome) {
-        // Busca o fornecedor
+        // Busca o fornecedor (obrigatório)
         Fornecedor fornecedor = fornecedorRepository.findById(fornecedorId)
                 .orElseThrow(() -> new RuntimeException("Fornecedor não encontrado."));
-        
-        // Define o fornecedor no documento
         documento.setFornecedor(fornecedor);
         
         // Salva no banco

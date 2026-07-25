@@ -37,8 +37,8 @@
 
     <!-- Propriedades do projeto -->
     <properties>
-        <!-- Java version: Define que o projeto usa Java 17 -->
-        <java.version>17</java.version>
+        <!-- Java version: Define que o projeto usa Java 21 -->
+        <java.version>21</java.version>
         
         <!-- Encoding: Define UTF-8 como codificação padrão para evitar problemas com acentuação -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

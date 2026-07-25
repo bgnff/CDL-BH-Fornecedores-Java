@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LogIn, Mail, Lock, Loader2 } from 'lucide-react';
-
-const LOGO_URL = 'https://cdl-bh-manager-1-zip--bg21829.replit.app/logo-principal.png';
+import logoPrincipal from '@/assets/logo-principal.png';
 
 export default function Login() {
   const { login } = useAuth();
@@ -26,7 +25,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img src={LOGO_URL} alt="Fundação CDL BH" className="h-24 w-auto mx-auto mb-4" />
+          <img src={logoPrincipal} alt="Fundação CDL BH" className="h-24 w-auto mx-auto mb-4" />
           <h1 className="text-2xl font-bold tracking-tight">Bem-vindo de volta</h1>
           <p className="text-muted-foreground mt-1 text-sm">Entre com sua conta para continuar</p>
         </div>

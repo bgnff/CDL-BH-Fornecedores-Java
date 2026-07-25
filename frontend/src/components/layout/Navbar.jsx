@@ -4,8 +4,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LayoutDashboard, Users, PlusCircle, User, LogOut, Menu, X } from 'lucide-react';
+import logoPrincipal from '@/assets/logo-principal.png';
 
-const LOGO_URL = 'https://cdl-bh-manager-1-zip--bg21829.replit.app/logo-principal.png';
 const navLinks = [
   { to: '/', label: 'Painel', icon: LayoutDashboard },
   { to: '/fornecedores', label: 'Fornecedores', icon: Users },
@@ -22,7 +22,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           <Link to="/" className="flex items-center gap-2.5 shrink-0">
-            <img src={LOGO_URL} alt="Fundação CDL BH" className="h-9 w-auto" />
+            <img src={logoPrincipal} alt="Fundação CDL BH" className="h-9 w-auto" />
             <span className="hidden sm:inline font-semibold text-foreground text-sm">Fundação CDL BH</span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
