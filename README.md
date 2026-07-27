@@ -388,31 +388,6 @@ Para mais detalhes, consulte o [GUIA_DE_COMANDOS.md](GUIA_DE_COMANDOS.md).
 
 ---
 
-## 📝 Notas sobre Migração do Node.js para Java
-
-Este projeto é uma migração do backend Node.js/Express para Java/Spring Boot:
-
-- **Schema separado**: `cdl_bh_fornecedores_java` (não conflita com o schema Node.js)
-- **API idêntica**: Mesmos endpoints, mesmos formatos de request/response
-- **Frontend reaproveitado**: Nenhuma alteração necessária no código React
-- **Melhorias**: Tabela `projetos` separada (mais flexível que ENUM), FKs formais
-
-O projeto Node.js original continua existindo em `AmbienteTeste-FCDL2026/` como referência.
-
----
-
-## 🤝 Contribuindo
-
-Este é um projeto da Fundação CDL-BH. Para contribuições:
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature
-3. Commit suas mudanças
-4. Push para a branch
-5. Abra um Pull Request
-
----
-
 ## 📄 Licença
 
 Este projeto é propriedade da Fundação CDL-BH.
