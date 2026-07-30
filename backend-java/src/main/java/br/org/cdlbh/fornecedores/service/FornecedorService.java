@@ -90,9 +90,9 @@ public class FornecedorService {
         
         // Define o status
         if (request.getStatus() != null) {
-            fornecedor.setStatus(Fornecedor.Status.valueOf(request.getStatus().toUpperCase()));
+            fornecedor.setStatus(Fornecedor.Status.valueOf(request.getStatus().toLowerCase()));
         } else {
-            fornecedor.setStatus(Fornecedor.Status.ATIVO);
+            fornecedor.setStatus(Fornecedor.Status.ativo);
         }
 
         // Salva no banco
@@ -215,6 +215,19 @@ public class FornecedorService {
 
         // Exclui do banco
         fornecedorRepository.deleteById(id);
+    }
+
+    /**
+     * Busca fornecedores por CNPJ (busca parcial, case-insensitive)
+     * 
+     * @param cnpj CNPJ ou parte do CNPJ
+     * @return Lista de FornecedorResponse
+     */
+    public List<FornecedorResponse> buscarPorCnpj(String cnpj) {
+        List<Fornecedor> fornecedores = fornecedorRepository.findByCnpjContainingIgnoreCase(cnpj);
+        return fornecedores.stream()
+                .map(FornecedorResponse::fromEntity)
+                .toList();
     }
 
     /**

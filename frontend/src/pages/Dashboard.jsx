@@ -1,20 +1,30 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { fornecedoresAPI } from '@/api/localClient';
+import { fornecedoresAPI, documentosAPI } from '@/api/localClient';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, PlusCircle, Building2, Search, TrendingUp, Activity } from 'lucide-react';
+import { Users, PlusCircle, Building2, Search, TrendingUp, Activity, AlertTriangle, FileText } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: fornecedores = [], isLoading } = useQuery({ queryKey: ['fornecedores'], queryFn: () => fornecedoresAPI.list() });
+  const { data: documentos = [] } = useQuery({ queryKey: ['documentosVencendo'], queryFn: () => documentosAPI.list() });
 
   const ativos = fornecedores.filter(f => f.status === 'ativo').length;
   const recentCount = fornecedores.filter(f => new Date(f.created_at) >= new Date(Date.now() - 7*24*60*60*1000)).length;
   const projetoCounts = fornecedores.reduce((acc, f) => { if (f.projeto) acc[f.projeto] = (acc[f.projeto]||0)+1; return acc; }, {});
+
+  // Documentos vencendo nos próximos 30 dias
+  const docsVencendo = documentos
+    .filter(d => { if (!d.data_vencimento) return false; const dias = differenceInDays(new Date(d.data_vencimento), new Date()); return dias <= 30; })
+    .sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
+
+  const fornecedorMap = {};
+  fornecedores.forEach(f => { fornecedorMap[f.id] = f; });
 
   const stats = [
     { title: 'Total de Fornecedores', value: fornecedores.length, icon: Users, color: 'text-primary' },
@@ -66,6 +76,46 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Alertas de Vencimento de Documentos */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            Documentos Vencendo (próximos 30 dias)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {docsVencendo.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">Nenhum documento vencendo nos próximos 30 dias.</p>
+          ) : (
+            <div className="space-y-3">
+              {docsVencendo.slice(0, 10).map(doc => {
+                const dias = differenceInDays(new Date(doc.data_vencimento), new Date());
+                const fornecedor = fornecedorMap[doc.fornecedor_id];
+                const vencido = dias < 0;
+                return (
+                  <Link key={doc.id} to={`/fornecedores/${doc.fornecedor_id}`}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent transition-colors group">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={"h-9 w-9 rounded-lg flex items-center justify-center shrink-0 " + (vencido ? "bg-red-100 text-red-600" : "bg-amber-100 text-amber-600")}>
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{doc.nome}</p>
+                        <p className="text-xs text-muted-foreground truncate">{fornecedor?.nome || "Fornecedor"} · {doc.tipo}</p>
+                      </div>
+                    </div>
+                    <span className={"text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ml-3 " + (vencido ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")}>
+                      {vencido ? "Vencido há " + Math.abs(dias) + "d" : "Vence em " + dias + "d"}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

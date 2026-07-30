@@ -164,6 +164,59 @@ CREATE TABLE IF NOT EXISTS fornecedores (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: documentos
+-- ============================================================
+-- Armazena documentos vinculados aos fornecedores (contratos, certidões, etc.)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS documentos (
+  -- Chave primária auto-incrementada
+  id              INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+
+  -- Chave estrangeira para fornecedores
+  -- ON DELETE CASCADE: Se o fornecedor for excluído, exclui todos os documentos
+  fornecedor_id   INT UNSIGNED    NOT NULL,
+
+  -- Nome/descrição do documento
+  nome            VARCHAR(200)    NOT NULL,
+
+  -- Tipo de documento
+  tipo            ENUM('Contrato','Certidão','Nota Fiscal','Alvará','Outro') NOT NULL DEFAULT 'Outro',
+
+  -- Data de vencimento do documento (opcional)
+  data_vencimento DATE            DEFAULT NULL,
+
+  -- URL do arquivo armazenado (pode ser S3, local, etc.)
+  arquivo_url     VARCHAR(500)    DEFAULT NULL,
+
+  -- Observações adicionais sobre o documento
+  observacao      TEXT            DEFAULT NULL,
+
+  -- Timestamps automáticos
+  created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- Define a chave primária
+  PRIMARY KEY (id),
+
+  -- Chave estrangeira para fornecedores
+  CONSTRAINT fk_documento_fornecedor
+    FOREIGN KEY (fornecedor_id)
+    REFERENCES fornecedores(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+
+  -- Índice no campo fornecedor_id - acelera buscas de documentos por fornecedor
+  INDEX idx_fornecedor (fornecedor_id),
+
+  -- Índice no campo data_vencimento - acelera buscas de documentos vencendo
+  INDEX idx_vencimento (data_vencimento),
+
+  -- Índice no campo tipo - acelera filtros por tipo de documento
+  INDEX idx_tipo (tipo)
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- TABELA: logs
 -- ============================================================
 -- Auditoria de todas as ações no sistema (CREATE, UPDATE, DELETE)
@@ -218,6 +271,63 @@ CREATE TABLE IF NOT EXISTS logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: backup_metadata
+-- ============================================================
+-- Metadados dos backups executados pelo sistema
+-- CRÍTICO PARA RESTAURAÇÃO: Permite saber de onde cada backup incremental deve começar
+-- ============================================================
+-- 
+-- POR QUE ESTA TABELA É NECESSÁRIA?
+-- - Backups incrementais usam o binary log (binlog) do MySQL
+-- - O binlog registra todas as alterações (INSERT/UPDATE/DELETE/DDL) no banco
+-- - Cada backup incremental precisa saber "de onde" começar a capturar mudanças
+-- - Esta tabela armazena o binlog_file e binlog_position de cada backup executado
+-- - Assim, o próximo incremental sabe exatamente de onde continuar
+-- 
+-- DIFERENÇA ENTRE FULL E INCREMENTAL:
+-- - FULL: Dump completo do banco via mysqldump (arquivo grande, demora mais)
+-- - INCREMENTAL: Apenas as mudanças desde o último backup via binlog (arquivo pequeno, rápido)
+-- 
+-- RESTAURAÇÃO:
+-- - Para restaurar o banco a um ponto específico:
+--   1) Restaurar o último backup FULL
+--   2) Aplicar em ordem cronológica todos os incrementais após o FULL
+-- ============================================================
+CREATE TABLE IF NOT EXISTS backup_metadata (
+  -- Chave primária auto-incrementada
+  id              INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  
+  -- Tipo de backup: FULL (dump completo) ou INCREMENTAL (apenas mudanças via binlog)
+  tipo            ENUM('FULL','INCREMENTAL') NOT NULL,
+  
+  -- Nome do arquivo de backup gerado
+  arquivo         VARCHAR(255)    NOT NULL,
+  
+  -- Nome do arquivo de binlog no momento do backup
+  -- Ex: mysql-bin.000123
+  -- Isso permite saber qual arquivo de binlog usar para o próximo incremental
+  binlog_file     VARCHAR(100)    DEFAULT NULL,
+  
+  -- Posição dentro do binlog no momento do backup
+  -- O binlog é um arquivo sequencial - cada evento tem uma posição
+  -- O próximo incremental começa a partir desta posição
+  binlog_position BIGINT UNSIGNED DEFAULT NULL,
+  
+  -- Timestamp de quando o backup foi executado
+  executado_em    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Define a chave primária
+  PRIMARY KEY (id),
+  
+  -- Índice no campo tipo - acelera filtros por tipo de backup
+  INDEX idx_tipo (tipo),
+  
+  -- Índice no campo executado_em - acelera listagem ordenada por data
+  INDEX idx_executado_em (executado_em)
+  
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- DADOS INICIAIS: Projetos
 -- ============================================================
 -- Insere os projetos que existiam como ENUM no schema anterior
@@ -238,13 +348,6 @@ INSERT INTO projetos (nome, descricao) VALUES
 ('Ver é Bom Demais', 'Projeto de saúde ocular'),
 ('Outro', 'Outros projetos não listados')
 ON DUPLICATE KEY UPDATE id = id;
-
--- ============================================================
--- DADOS INICIAIS: Usuário Admin
--- ============================================================
--- REMOVIDO: Usuário admin padrão não será criado automaticamente
--- O sistema deve ter um processo de criação de usuários via interface
--- ============================================================
 
 -- ============================================================
 -- DADOS INICIAIS: Fornecedores de Exemplo

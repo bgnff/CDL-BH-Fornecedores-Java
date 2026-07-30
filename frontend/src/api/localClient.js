@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 function getToken() { return localStorage.getItem('cdlbh_token'); }
 function setToken(t) { localStorage.setItem('cdlbh_token', t); }
@@ -36,6 +36,17 @@ export const fornecedoresAPI = {
   create(data)     { return request('POST', '/fornecedores', data); },
   update(id, data) { return request('PUT', `/fornecedores/${id}`, data); },
   delete(id)       { return request('DELETE', `/fornecedores/${id}`); },
+};
+
+export const documentosAPI = {
+  list()                      { return request('GET', '/documentos'); },
+  listByFornecedor(fornecedorId) { return request('GET', `/documentos/fornecedor/${fornecedorId}`); },
+  get(id)                     { return request('GET', `/documentos/${id}`); },
+  create(data)                { return request('POST', '/documentos', data); },
+  update(id, data)            { return request('PUT', `/documentos/${id}`, data); },
+  delete(id)                  { return request('DELETE', `/documentos/${id}`); },
+  vencendo(dias = 30)         { return request('GET', `/documentos/vencendo?dias=${dias}`); },
+  vencidos()                  { return request('GET', '/documentos/vencidos'); },
 };
 
 export const backupAPI = {

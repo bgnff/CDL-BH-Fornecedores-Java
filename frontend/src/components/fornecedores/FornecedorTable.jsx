@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Pencil, Trash2, Mail, Phone } from 'lucide-react';
+import { Eye, Pencil, Trash2, Mail, Phone, FileText } from 'lucide-react';
 
 function whatsappUrl(telefone) {
   const digits = (telefone || '').replace(/\D/g, '');
@@ -53,6 +53,7 @@ export default function FornecedorTable({ fornecedores, isLoading, onDelete }) {
                 <TableCell className="hidden lg:table-cell"><Badge className={`text-xs ${f.status === 'ativo' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{f.status === 'ativo' ? 'Ativo' : 'Inativo'}</Badge></TableCell>
                 <TableCell className="text-right"><div className="flex items-center justify-end gap-1">
                   <Link to={`/fornecedores/${f.id}`}><Button variant="ghost" size="icon" className="h-8 w-8"><Eye className="h-4 w-4" /></Button></Link>
+                  <Link to={`/fornecedores/${f.id}`}><Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" title="Documentos e contratos"><FileText className="h-4 w-4" /></Button></Link>
                   {whatsappUrl(f.telefone) && (
                     <a href={whatsappUrl(f.telefone)} target="_blank" rel="noopener noreferrer">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">

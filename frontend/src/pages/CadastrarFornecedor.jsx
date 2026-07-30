@@ -10,7 +10,11 @@ export default function CadastrarFornecedor() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: (data) => fornecedoresAPI.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['fornecedores'] }); toast.success('Fornecedor cadastrado!'); navigate('/fornecedores'); },
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
+      toast.success('Fornecedor cadastrado! Agora você pode anexar documentos.');
+      navigate(`/fornecedores/${created.id}`);
+    },
     onError: () => toast.error('Erro ao cadastrar.'),
   });
   return (

@@ -275,13 +275,94 @@ O frontend estará disponível em: http://localhost:5173
 
 ## 📦 Backup Automático
 
-O sistema gera backups automáticos a cada hora via `@Scheduled`:
+O sistema implementa uma política de backup híbrida (FULL + INCREMENTAL) para maximizar eficiência e segurança dos dados:
 
-- **Cron expression**: `0 0 * * * *` (início de cada hora)
-- **Local**: `backups/backup_<timestamp>.sql`
-- **Ferramenta**: `mysqldump` do MySQL
+### Política de Backup
 
-Backups também podem ser gerados manualmente via API (endpoint `/api/backup/generate`).
+- **Backup FULL**: Todos os dias às 01:00 da manhã
+  - Gera um dump completo do banco via `mysqldump`
+  - Arquivo maior, demora mais para gerar
+  - Contém todos os dados do banco no momento do backup
+  - Cron: `0 0 1 * * *`
+
+- **Backup INCREMENTAL**: De 3 em 3 horas (08:00, 11:00, 14:00, 17:00, 20:00, 23:00)
+  - Gera apenas as mudanças desde o último backup via `mysqlbinlog`
+  - Arquivo pequeno, rápido para gerar
+  - Contém apenas as alterações (INSERT/UPDATE/DELETE/DDL) desde o último backup
+  - Cron: `0 0 8,11,14,17,20,23 * * *`
+
+### Diferença entre FULL e INCREMENTAL
+
+| Tipo | Descrição | Vantagens | Desvantagens |
+|------|-----------|-----------|--------------|
+| **FULL** | Dump completo do banco via mysqldump | Restauração simples e rápida | Arquivo grande, demora mais para gerar |
+| **INCREMENTAL** | Apenas mudanças via binary log (binlog) | Arquivo pequeno, rápido para gerar | Restauração requer aplicar FULL + incrementais em ordem |
+
+### Pré-requisitos: Binary Log (Binlog)
+
+Para que backups incrementais funcionem, o **binary log** deve estar habilitado no MySQL:
+
+**O que é o Binary Log?**
+- O binlog é um arquivo sequencial que registra todas as alterações no banco (INSERT/UPDATE/DELETE/DDL)
+- Cada evento no binlog tem uma posição única
+- Backups incrementais usam essas posições para saber "de onde" começar a capturar mudanças
+
+**Como habilitar no MySQL (Windows):**
+
+1. Abra o arquivo `my.ini` (geralmente em `C:\ProgramData\MySQL\MySQL Server 8.0\my.ini`)
+2. Adicione ou modifique as seguintes linhas na seção `[mysqld]`:
+
+```ini
+[mysqld]
+log-bin=mysql-bin
+server-id=1
+binlog_expire_logs_seconds=604800
+```
+
+3. Reinicie o serviço MySQL:
+```bash
+net stop MySQL80
+net start MySQL80
+```
+
+**Explicação das configurações:**
+- `log-bin=mysql-bin`: Habilita o binary log com prefixo "mysql-bin"
+- `server-id=1`: Identificador único do servidor (obrigatório para binlog)
+- `binlog_expire_logs_seconds=604800`: Mantém 7 dias de binlogs (604800 segundos), depois expira automaticamente
+
+### Como Funciona a Restauração
+
+Para restaurar o banco a um ponto específico:
+
+1. **Restaurar o último backup FULL**
+   ```bash
+   mysql -u root -p cdl_bh_fornecedores_java < backup_2024-01-15T01-00-00-000.sql
+   ```
+
+2. **Aplicar os incrementais em ordem cronológica**
+   ```bash
+   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T08-00-00-000.sql
+   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T11-00-00-000.sql
+   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T14-00-00-000.sql
+   # ... e assim por diante até o ponto desejado
+   ```
+
+**Importante:** Os incrementais devem ser aplicados **na ordem cronológica** correta, do mais antigo para o mais recente.
+
+### Metadados de Backup
+
+O sistema mantém uma tabela `backup_metadata` que rastreia cada backup executado:
+- `tipo`: FULL ou INCREMENTAL
+- `arquivo`: Nome do arquivo gerado
+- `binlog_file`: Nome do arquivo de binlog no momento do backup
+- `binlog_position`: Posição dentro do binlog (ponto de partida para o próximo incremental)
+- `executado_em`: Timestamp de quando o backup foi executado
+
+Esta tabela é essencial para que o sistema saiba de onde cada backup incremental deve começar.
+
+### Backup Manual
+
+Backups também podem ser gerados manualmente via API (endpoint `/api/backup/generate`), que gera um backup FULL sob demanda.
 
 ---
 

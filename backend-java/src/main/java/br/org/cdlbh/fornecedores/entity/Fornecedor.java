@@ -119,10 +119,13 @@ public class Fornecedor {
 
     /**
      * Enum que define os status possíveis do fornecedor
+     * 
+     * IMPORTANTE: Os valores estão em lowercase para compatibilidade com o banco
+     * O banco usa ENUM('ativo','inativo') em lowercase
      */
     public enum Status {
-        ATIVO,
-        INATIVO
+        ativo,
+        inativo
     }
 
     /**
@@ -133,9 +136,9 @@ public class Fornecedor {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         
-        // Define status padrão como ATIVO se não foi definido
+        // Define status padrão como ativo se não foi definido
         if (status == null) {
-            status = Status.ATIVO;
+            status = Status.ativo;
         }
         
         // Define permissão padrão como lista vazia se não foi definida

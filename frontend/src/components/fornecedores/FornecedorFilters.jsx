@@ -24,7 +24,7 @@ export default function FornecedorFilters({ search, onSearchChange, projeto, onP
     <div className="flex flex-col sm:flex-row gap-3">
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Buscar por nome, empresa ou palavra-chave..." value={search} onChange={e => onSearchChange(e.target.value)} className="pl-10" />
+        <Input placeholder="Buscar por nome, empresa, CNPJ ou palavra-chave..." value={search} onChange={e => onSearchChange(e.target.value)} className="pl-10" />
       </div>
       <div className="flex items-center gap-2">
         <Filter className="h-4 w-4 text-muted-foreground shrink-0" />

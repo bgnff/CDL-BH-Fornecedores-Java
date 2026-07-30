@@ -1,10 +1,11 @@
 package br.org.cdlbh.fornecedores.exception;
 
 import br.org.cdlbh.fornecedores.dto.ErrorResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,6 +29,8 @@ import java.util.Map;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * Trata exceções de validação (@Valid nos DTOs)
@@ -56,6 +59,46 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Trata CredenciaisInvalidasException
+     * 
+     * Lançada quando o e-mail não existe ou a senha está incorreta no login.
+     * Retorna HTTP 401 (Unauthorized).
+     * 
+     * Por que ter este handler específico?
+     * - Diferencia erros de autenticação esperados (401) de bugs reais do sistema (500)
+     * - Permite que o frontend mostre mensagem apropriada ao usuário
+     * - O stack trace completo é logado no servidor para diagnóstico, mas não exposto ao cliente
+     * 
+     * @param ex Exceção de credenciais inválidas
+     * @return ErrorResponse com mensagem de erro
+     */
+    @ExceptionHandler(CredenciaisInvalidasException.class)
+    public ResponseEntity<ErrorResponse> handleCredenciaisInvalidasException(CredenciaisInvalidasException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ErrorResponse.of(ex.getMessage()));
+    }
+
+    /**
+     * Trata RecursoNaoEncontradoException
+     * 
+     * Lançada quando um recurso (usuário, fornecedor, etc.) buscado por ID não é encontrado.
+     * Retorna HTTP 404 (Not Found).
+     * 
+     * Por que ter este handler específico?
+     * - Diferencia recursos não encontrados (404) de outros erros
+     * - Permite que o frontend mostre mensagem apropriada ao usuário
+     * - O stack trace completo é logado no servidor para diagnóstico, mas não exposto ao cliente
+     * 
+     * @param ex Exceção de recurso não encontrado
+     * @return ErrorResponse com mensagem de erro
+     */
+    @ExceptionHandler(RecursoNaoEncontradoException.class)
+    public ResponseEntity<ErrorResponse> handleRecursoNaoEncontradoException(RecursoNaoEncontradoException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(ex.getMessage()));
+    }
+
+    /**
      * Trata exceções de acesso negado (usuário sem permissão)
      * 
      * Lançada quando @PreAuthorize("hasRole('ADMIN')") falha
@@ -70,23 +113,13 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Trata exceções de credenciais inválidas
-     * 
-     * Lançada pelo AuthenticationManager quando senha está incorreta
-     * 
-     * @param ex Exceção de credenciais inválidas
-     * @return ErrorResponse com mensagem de erro
-     */
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ErrorResponse> handleBadCredentialsException(BadCredentialsException ex) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ErrorResponse.of("Credenciais inválidas."));
-    }
-
-    /**
      * Trata exceções genéricas (RuntimeException)
      * 
-     * Usado para erros de negócio (ex: fornecedor não encontrado)
+     * Este handler captura RuntimeExceptions que não são das exceções específicas acima.
+     * É um fallback para erros de negócio que ainda usam RuntimeException.
+     * 
+     * NOTA: Idealmente, todos os erros de negócio deveriam usar exceções específicas
+     * (como CredenciaisInvalidasException) para permitir tratamento mais preciso.
      * 
      * @param ex Exceção genérica
      * @return ErrorResponse com mensagem de erro
@@ -110,18 +143,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Trata qualquer outra exceção não tratada
+     * Trata qualquer outra exceção não tratada (fallback genérico)
      * 
-     * Este é o fallback para erros inesperados
+     * Este é o handler de última instância para erros inesperados do sistema.
+     * Captura exceções que não foram tratadas pelos handlers específicos acima.
      * 
-     * @param ex Exceção
+     * Por que este handler é importante?
+     * - Garante que o sistema nunca vaze informações sensíveis (stack traces, detalhes internos)
+     * para o cliente, mesmo em caso de bugs inesperados
+     * - Registra o stack trace completo no log do servidor para diagnóstico
+     * - Retorna uma mensagem genérica ao cliente ("Erro interno do servidor")
+     * - Isso permite que desenvolvedores investiguem erros reais sem expor detalhes técnicos aos usuários
+     * 
+     * @param ex Exceção não tratada
      * @return ErrorResponse genérico
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        // Log do erro para debug (não expomos o stack trace ao cliente)
-        ex.printStackTrace();
+        // Log do erro completo no servidor para diagnóstico
+        logger.error("Erro não tratado: ", ex);
         
+        // Retorna mensagem genérica ao cliente - nunca expor detalhes internos
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of("Erro interno do servidor."));
     }

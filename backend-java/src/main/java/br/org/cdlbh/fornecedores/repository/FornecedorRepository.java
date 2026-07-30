@@ -66,4 +66,12 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Long> {
      * @return Lista de fornecedores com o status e projeto especificados
      */
     List<Fornecedor> findByStatusAndProjetoId(Fornecedor.Status status, Long projetoId);
+
+    /**
+     * Busca fornecedores por CNPJ (busca parcial, case-insensitive)
+     * 
+     * @param cnpj CNPJ ou parte do CNPJ
+     * @return Lista de fornecedores com o CNPJ especificado
+     */
+    List<Fornecedor> findByCnpjContainingIgnoreCase(String cnpj);
 }
