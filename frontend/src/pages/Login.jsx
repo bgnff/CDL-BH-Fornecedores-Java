@@ -24,7 +24,14 @@ export default function Login() {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError('E-mail ou senha incorretos.');
+      const msg = err.message || '';
+      if (msg.includes('Invalid login credentials')) {
+        setError('Credenciais inválidas. Verifique o e-mail/senha ou cadastre o usuário no painel do Supabase (Authentication > Users).');
+      } else if (msg.includes('Email not confirmed')) {
+        setError('E-mail não confirmado. Ative a opção "Auto Confirm User" no painel do Supabase.');
+      } else {
+        setError(msg || 'E-mail ou senha incorretos.');
+      }
     } finally {
       setLoading(false);
     }
