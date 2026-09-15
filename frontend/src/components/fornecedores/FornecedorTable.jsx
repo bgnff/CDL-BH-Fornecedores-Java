@@ -52,16 +52,30 @@ export default function FornecedorTable({ fornecedores, isLoading, onDelete }) {
                 <TableCell className="hidden lg:table-cell">{f.projeto && <Badge variant="secondary" className="text-xs font-normal">{f.projeto}</Badge>}</TableCell>
                 <TableCell className="hidden lg:table-cell"><Badge className={`text-xs ${f.status === 'ativo' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{f.status === 'ativo' ? 'Ativo' : 'Inativo'}</Badge></TableCell>
                 <TableCell className="text-right"><div className="flex items-center justify-end gap-1">
-                  <Link to={`/fornecedores/${f.id}`}><Button variant="ghost" size="icon" className="h-8 w-8"><Eye className="h-4 w-4" /></Button></Link>
-                  <Link to={`/fornecedores/${f.id}`}><Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" title="Documentos e contratos"><FileText className="h-4 w-4" /></Button></Link>
+                  <Link to={`/fornecedores/${f.id}`} title="Visualizar detalhes">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </Link>
                   {whatsappUrl(f.telefone) && (
-                    <a href={whatsappUrl(f.telefone)} target="_blank" rel="noopener noreferrer">
+                    <a href={whatsappUrl(f.telefone)} target="_blank" rel="noopener noreferrer" title="Conversar no WhatsApp">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
                         <WhatsAppIcon className="h-4 w-4" />
                       </Button>
                     </a>
                   )}
-                  {isAdmin && <><Link to={`/fornecedores/${f.id}/editar`}><Button variant="ghost" size="icon" className="h-8 w-8"><Pencil className="h-4 w-4" /></Button></Link><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDelete(f)}><Trash2 className="h-4 w-4" /></Button></>}
+                  {isAdmin && (
+                    <>
+                      <Link to={`/fornecedores/${f.id}/editar`} title="Editar fornecedor">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Excluir fornecedor" onClick={() => onDelete(f)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div></TableCell>
               </TableRow>
             ))}

@@ -175,7 +175,7 @@ public class FornecedorService {
         
         // Atualiza status
         if (request.getStatus() != null) {
-            fornecedor.setStatus(Fornecedor.Status.valueOf(request.getStatus().toUpperCase()));
+            fornecedor.setStatus(Fornecedor.Status.valueOf(request.getStatus().toLowerCase()));
         }
 
         // Salva no banco

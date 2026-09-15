@@ -116,14 +116,22 @@ public class DocumentoController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Documento> criar(@RequestBody Documento documento,
-                                          @RequestParam Long fornecedorId,
+                                          @RequestParam(required = false) Long fornecedorId,
                                           Authentication authentication) {
+        Long targetFornecedorId = fornecedorId;
+        if (targetFornecedorId == null && documento.getFornecedor() != null) {
+            targetFornecedorId = documento.getFornecedor().getId();
+        }
+        if (targetFornecedorId == null) {
+            throw new IllegalArgumentException("fornecedorId é obrigatório.");
+        }
+
         // Extrai dados do usuário para auditoria
         Long usuarioId = Long.parseLong(authentication.getName());
         String usuarioNome = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
         
         // Chama o service para criar
-        Documento response = documentoService.criar(documento, fornecedorId, usuarioId, usuarioNome);
+        Documento response = documentoService.criar(documento, targetFornecedorId, usuarioId, usuarioNome);
         return ResponseEntity.status(201).body(response);
     }
 

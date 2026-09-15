@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, PlusCircle, Building2, Search, TrendingUp, Activity, AlertTriangle, FileText } from 'lucide-react';
+import { Users, PlusCircle, Building2, Search, TrendingUp, Activity, AlertTriangle, FileText, FolderKanban } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 
 export default function Dashboard() {
@@ -18,10 +18,27 @@ export default function Dashboard() {
   const recentCount = fornecedores.filter(f => new Date(f.created_at) >= new Date(Date.now() - 7*24*60*60*1000)).length;
   const projetoCounts = fornecedores.reduce((acc, f) => { if (f.projeto) acc[f.projeto] = (acc[f.projeto]||0)+1; return acc; }, {});
 
-  // Documentos vencendo nos próximos 30 dias
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    const clean = String(dateStr).split('T')[0];
+    return new Date(clean + 'T00:00:00');
+  };
+
+  const getDaysUntil = (dateStr) => {
+    if (!dateStr) return null;
+    const targetDate = parseLocalDate(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  // Documentos vencendo nos próximos 30 dias (ou já vencidos)
   const docsVencendo = documentos
-    .filter(d => { if (!d.data_vencimento) return false; const dias = differenceInDays(new Date(d.data_vencimento), new Date()); return dias <= 30; })
-    .sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento));
+    .filter(d => {
+      const dias = getDaysUntil(d.data_vencimento);
+      return dias !== null && dias <= 30;
+    })
+    .sort((a, b) => (parseLocalDate(a.data_vencimento) || 0) - (parseLocalDate(b.data_vencimento) || 0));
 
   const fornecedorMap = {};
   fornecedores.forEach(f => { fornecedorMap[f.id] = f; });
@@ -41,6 +58,7 @@ export default function Dashboard() {
       </div>
       <div className="flex flex-wrap gap-3">
         <Link to="/cadastrar"><Button className="gap-2"><PlusCircle className="h-4 w-4" />Novo Fornecedor</Button></Link>
+        <Link to="/projetos"><Button variant="outline" className="gap-2 border-primary/30 text-primary hover:bg-primary/10"><FolderKanban className="h-4 w-4" />Ver Projetos</Button></Link>
         <Link to="/fornecedores"><Button variant="outline" className="gap-2"><Search className="h-4 w-4" />Buscar Fornecedores</Button></Link>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -91,7 +109,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3">
               {docsVencendo.slice(0, 10).map(doc => {
-                const dias = differenceInDays(new Date(doc.data_vencimento), new Date());
+                const dias = getDaysUntil(doc.data_vencimento) ?? 0;
                 const fornecedor = fornecedorMap[doc.fornecedor_id];
                 const vencido = dias < 0;
                 return (

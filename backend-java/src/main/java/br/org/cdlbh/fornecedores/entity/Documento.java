@@ -52,7 +52,7 @@ public class Documento {
     /**
      * Tipo de documento
      */
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = br.org.cdlbh.fornecedores.config.DocumentoTipoConverter.class)
     @Column(nullable = false, length = 50)
     private Tipo tipo;
 

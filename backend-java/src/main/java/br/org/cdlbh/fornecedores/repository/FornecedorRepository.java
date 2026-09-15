@@ -41,6 +41,11 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Long> {
     List<Fornecedor> findByProjetoId(Long projetoId);
 
     /**
+     * Conta o número de fornecedores vinculados a um projeto
+     */
+    long countByProjetoId(Long projetoId);
+
+    /**
      * Busca textual usando FULLTEXT index do MySQL
      * 
      * @Query: Define uma query JPQL ou SQL customizada

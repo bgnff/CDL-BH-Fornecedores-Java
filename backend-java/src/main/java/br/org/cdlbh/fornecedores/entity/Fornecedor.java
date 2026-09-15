@@ -95,13 +95,14 @@ public class Fornecedor {
      * O JPA converterá automaticamente para JSON usando um AttributeConverter
      * (será implementado na camada de configuração)
      */
-    @Column(columnDefinition = "JSON")
+    @Convert(converter = br.org.cdlbh.fornecedores.config.PermissaoParaConverter.class)
+    @Column(name = "permissao_para")
     private List<String> permissaoPara;
 
     /**
      * Status do fornecedor
      */
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = br.org.cdlbh.fornecedores.config.StatusConverter.class)
     @Column(nullable = false, length = 20)
     private Status status;
 

@@ -64,12 +64,32 @@ public class PermissaoParaConverter implements AttributeConverter<List<String>, 
             return List.of();
         }
         try {
-            // Converte a string JSON de volta para List<String>
-            // TypeReference é necessário porque o Jackson precisa saber o tipo genérico
+            dbData = dbData.trim();
+            // Handle double-encoded JSON string if database dialect returned JSON as string literal
+            if (dbData.startsWith("\"") && dbData.endsWith("\"")) {
+                try {
+                    dbData = objectMapper.readValue(dbData, String.class);
+                } catch (Exception ignored) {
+                }
+            }
+            if (dbData == null || dbData.trim().isEmpty()) {
+                return List.of();
+            }
             return objectMapper.readValue(dbData, new TypeReference<List<String>>() {});
         } catch (JsonProcessingException e) {
-            // Se der erro na conversão, lança RuntimeException
-            throw new RuntimeException("Erro ao converter JSON para lista", e);
+            try {
+                if (dbData.startsWith("[") && dbData.endsWith("]")) {
+                    String inner = dbData.substring(1, dbData.length() - 1).trim();
+                    if (inner.isEmpty()) return List.of();
+                    return java.util.Arrays.stream(inner.split(","))
+                            .map(s -> s.trim().replaceAll("^\"|\"$", ""))
+                            .filter(s -> !s.isEmpty())
+                            .toList();
+                }
+                return List.of(dbData);
+            } catch (Exception ex) {
+                return List.of();
+            }
         }
     }
 }

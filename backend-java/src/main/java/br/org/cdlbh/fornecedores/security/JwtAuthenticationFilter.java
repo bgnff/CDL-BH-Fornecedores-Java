@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Filtro JWT para autenticação de requisições
@@ -77,11 +78,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     // - Primeiro parâmetro: principal (identificação do usuário - usamos o ID)
                     // - Segundo parâmetro: credentials (não usamos pois é JWT)
                     // - Terceiro parâmetro: authorities (permissões/roles do usuário)
+                    List<SimpleGrantedAuthority> authorities = List.of(
+                            new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()),
+                            new SimpleGrantedAuthority("ROLE_" + role.toLowerCase()),
+                            new SimpleGrantedAuthority(role.toUpperCase()),
+                            new SimpleGrantedAuthority(role.toLowerCase())
+                    );
+
                     UsernamePasswordAuthenticationToken authentication = 
                             new UsernamePasswordAuthenticationToken(
                                     userId, 
                                     null, 
-                                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+                                    authorities
                             );
 
                     // Adiciona detalhes da requisição (IP, session ID, etc.)
@@ -92,14 +100,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } catch (Exception e) {
-                // Se houver erro na validação do token, retorna 401 para que o frontend limpe o token
-                // Isso é importante para tokens expirados, pois o frontend precisa saber para fazer logout
-                logger.error("Erro ao processar token JWT: " + e.getMessage());
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-                response.getWriter().write("{\"error\":\"Token inválido ou expirado\"}");
-                // Se houver erro na validação do token, enviamos resposta 401 imediatamente
-                // Isso garante a semântica correta: 401 = não autenticado (token inválido/ausente)
                 logger.error("Erro ao processar token JWT: " + e.getMessage());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json");

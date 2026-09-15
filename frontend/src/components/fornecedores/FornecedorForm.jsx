@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { projetosAPI } from '@/api/localClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,9 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Save, X } from 'lucide-react';
+import { Loader2, Save, X, Search, CheckCircle2, Building2 } from 'lucide-react';
+import { toast } from 'sonner';
 
-const PROJETOS = [
+const PROJETOS_FALLBACK = [
   'Projeto Afeto',
   'Afeto Empreendedorismo',
   'Alimentando Vidas',
@@ -23,7 +26,16 @@ const PROJETOS = [
   'Ver é Bom Demais',
   'Outro'
 ];
-const PERMISSOES = ['Fornecer materiais','Prestar serviço','Doação de produtos','Consultoria','Transporte e logística','Alimentação','Outro'];
+
+const PERMISSOES = [
+  'Fornecer materiais',
+  'Prestar serviço',
+  'Doação de produtos',
+  'Consultoria',
+  'Transporte e logística',
+  'Alimentação',
+  'Outro'
+];
 
 function validarCNPJ(cnpj) {
   const digits = cnpj.replace(/\D/g, "");
@@ -64,57 +76,326 @@ function formatCnpj(value) {
 }
 
 export default function FornecedorForm({ initialData, onSubmit, onCancel, isSubmitting }) {
-  const [form, setForm] = useState({ nome:'', empresa_pf:'', cnpj:'', email:'', telefone:'', palavra_chave:'', projeto:'', observacao:'', permissao_para:[], status:'ativo' });
+  const [form, setForm] = useState({
+    nome: '',
+    empresa_pf: '',
+    cnpj: '',
+    email: '',
+    telefone: '',
+    palavra_chave: '',
+    projeto: '__none__',
+    observacao: '',
+    permissao_para: [],
+    status: 'ativo'
+  });
   const [errors, setErrors] = useState({});
+  const [loadingCnpj, setLoadingCnpj] = useState(false);
+  const [cnpjFeedback, setCnpjFeedback] = useState('');
+
+  const { data: projetosData = [] } = useQuery({
+    queryKey: ['projetos'],
+    queryFn: () => projetosAPI.list(),
+  });
+
+  const listaProjetos = projetosData.length > 0
+    ? projetosData.map((p) => p.nome)
+    : PROJETOS_FALLBACK;
+
+  const handleConsultarCnpj = async () => {
+    const rawCnpj = (form.cnpj || '').replace(/\D/g, '');
+    if (rawCnpj.length !== 14) {
+      toast.error('Digite os 14 números do CNPJ antes de consultar.');
+      return;
+    }
+
+    setLoadingCnpj(true);
+    setCnpjFeedback('');
+    try {
+      const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${rawCnpj}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          throw new Error('CNPJ não encontrado na base oficial da Receita Federal.');
+        }
+        throw new Error('Erro ao consultar BrasilAPI. Verifique sua conexão e tente novamente.');
+      }
+      const data = await res.json();
+
+      const razaoSocial = data.razao_social || '';
+      const nomeFantasia = data.nome_fantasia || '';
+      const telefone = data.ddd_telefone_1 ? formatPhone(data.ddd_telefone_1) : '';
+      const email = data.email ? data.email.toLowerCase() : '';
+      const cnae = data.cnae_fiscal_descricao || '';
+      const situacao = data.descricao_situacao_cadastral || 'ATIVA';
+
+      setForm((prev) => ({
+        ...prev,
+        empresa_pf: razaoSocial || nomeFantasia || prev.empresa_pf,
+        nome: prev.nome ? prev.nome : (nomeFantasia || razaoSocial),
+        telefone: telefone || prev.telefone,
+        email: email || prev.email,
+        palavra_chave: prev.palavra_chave ? prev.palavra_chave : cnae,
+        observacao: prev.observacao
+          ? prev.observacao
+          : (data.municipio && data.uf
+              ? `Endereço: ${data.logradouro || ''}, ${data.numero || 'S/N'} - ${data.bairro || ''}, ${data.municipio}/${data.uf} (CEP: ${data.cep || ''})`
+              : prev.observacao),
+      }));
+
+      setCnpjFeedback(`Dados preenchidos! Situação: ${situacao}`);
+      toast.success(`CNPJ localizado: ${razaoSocial || nomeFantasia} (${situacao})`);
+    } catch (err) {
+      console.error('Erro na consulta CNPJ:', err);
+      toast.error(err.message || 'Falha ao buscar dados do CNPJ.');
+    } finally {
+      setLoadingCnpj(false);
+    }
+  };
 
   useEffect(() => {
-    if (initialData) setForm({ nome: initialData.nome||'', empresa_pf: initialData.empresa_pf||'', cnpj: initialData.cnpj||'', email: initialData.email||'', telefone: initialData.telefone||'', palavra_chave: initialData.palavra_chave||'', projeto: initialData.projeto||'', observacao: initialData.observacao||'', permissao_para: initialData.permissao_para||[], status: initialData.status||'ativo' });
+    if (initialData) {
+      setForm({
+        nome: initialData.nome || '',
+        empresa_pf: initialData.empresa_pf || '',
+        cnpj: initialData.cnpj || '',
+        email: initialData.email || '',
+        telefone: initialData.telefone || '',
+        palavra_chave: initialData.palavra_chave || '',
+        projeto: initialData.projeto || '__none__',
+        observacao: initialData.observacao || '',
+        permissao_para: initialData.permissao_para || [],
+        status: initialData.status || 'ativo'
+      });
+    }
   }, [initialData]);
 
   const validate = () => {
     const e = {};
     if (!form.nome.trim()) e.nome = 'Nome é obrigatório';
     if (!form.empresa_pf.trim()) e.empresa_pf = 'Empresa/PF é obrigatório';
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'E-mail inválido';
-    if (form.telefone) {
+    if (form.email && form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      e.email = 'E-mail inválido';
+    }
+    if (form.telefone && form.telefone.trim()) {
       const digits = form.telefone.replace(/\D/g, '');
       if (digits.length < 10 || digits.length > 11) e.telefone = 'Telefone deve ter 10 ou 11 dígitos';
     }
-    if (form.cnpj) {
+    if (form.cnpj && form.cnpj.trim()) {
       const digits = form.cnpj.replace(/\D/g, '');
       if (digits.length === 14 && !validarCNPJ(form.cnpj)) e.cnpj = 'CNPJ inválido — dígitos verificadores não conferem';
       else if (digits.length > 0 && digits.length !== 14) e.cnpj = 'CNPJ deve ter 14 dígitos';
     }
-    setErrors(e); return Object.keys(e).length === 0;
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const set = (field, value) => { setForm(p => ({ ...p, [field]: value })); if (errors[field]) setErrors(p => ({ ...p, [field]: undefined })); };
-  const togglePerm = (perm) => setForm(p => ({ ...p, permissao_para: p.permissao_para.includes(perm) ? p.permissao_para.filter(x => x !== perm) : [...p.permissao_para, perm] }));
+  const set = (field, value) => {
+    setForm(p => ({ ...p, [field]: value }));
+    if (errors[field]) setErrors(p => ({ ...p, [field]: undefined }));
+  };
+
+  const togglePerm = (perm) => {
+    setForm(p => ({
+      ...p,
+      permissao_para: p.permissao_para.includes(perm)
+        ? p.permissao_para.filter(x => x !== perm)
+        : [...p.permissao_para, perm]
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    const payload = {
+      ...form,
+      nome: form.nome.trim(),
+      empresa_pf: form.empresa_pf.trim(),
+      cnpj: form.cnpj?.trim() || null,
+      email: form.email?.trim() || null,
+      telefone: form.telefone?.trim() || null,
+      palavra_chave: form.palavra_chave?.trim() || null,
+      observacao: form.observacao?.trim() || null,
+      projeto: form.projeto === '__none__' || !form.projeto?.trim() ? null : form.projeto.trim(),
+    };
+
+    onSubmit(payload);
+  };
 
   return (
     <Card>
-      <CardHeader><CardTitle>{initialData ? 'Editar Fornecedor' : 'Cadastrar Fornecedor'}</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle>{initialData ? 'Editar Fornecedor' : 'Cadastrar Fornecedor'}</CardTitle>
+      </CardHeader>
       <CardContent>
-        <form onSubmit={(e) => { e.preventDefault(); if (validate()) onSubmit(form); }} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>Nome <span className="text-destructive">*</span></Label><Input placeholder="Nome do fornecedor" value={form.nome} onChange={e => set('nome', e.target.value)} className={errors.nome ? 'border-destructive' : ''} />{errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}</div>
-            <div className="space-y-2"><Label>Empresa / PF <span className="text-destructive">*</span></Label><Input placeholder="Nome da empresa ou pessoa física" value={form.empresa_pf} onChange={e => set('empresa_pf', e.target.value)} className={errors.empresa_pf ? 'border-destructive' : ''} />{errors.empresa_pf && <p className="text-xs text-destructive">{errors.empresa_pf}</p>}</div>
+            <div className="space-y-2">
+              <Label>Nome <span className="text-destructive">*</span></Label>
+              <Input
+                placeholder="Nome do contato ou representante"
+                value={form.nome}
+                onChange={e => set('nome', e.target.value)}
+                className={errors.nome ? 'border-destructive' : ''}
+              />
+              {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Empresa / Razão Social <span className="text-destructive">*</span></Label>
+              <Input
+                placeholder="Nome da empresa ou pessoa física"
+                value={form.empresa_pf}
+                onChange={e => set('empresa_pf', e.target.value)}
+                className={errors.empresa_pf ? 'border-destructive' : ''}
+              />
+              {errors.empresa_pf && <p className="text-xs text-destructive">{errors.empresa_pf}</p>}
+            </div>
           </div>
+
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>E-mail</Label><Input type="email" placeholder="email@exemplo.com" value={form.email} onChange={e => set('email', e.target.value)} className={errors.email ? 'border-destructive' : ''} />{errors.email && <p className="text-xs text-destructive">{errors.email}</p>}</div>
-            <div className="space-y-2"><Label>Telefone</Label><Input placeholder="(31) 99999-9999" value={form.telefone} onChange={e => set('telefone', formatPhone(e.target.value))} className={errors.telefone ? 'border-destructive' : ''} />{errors.telefone && <p className="text-xs text-destructive">{errors.telefone}</p>}</div>
+            <div className="space-y-2">
+              <Label>E-mail</Label>
+              <Input
+                type="email"
+                placeholder="contato@empresa.com.br"
+                value={form.email}
+                onChange={e => set('email', e.target.value)}
+                className={errors.email ? 'border-destructive' : ''}
+              />
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Telefone / WhatsApp</Label>
+              <Input
+                placeholder="(31) 99999-9999"
+                value={form.telefone}
+                onChange={e => set('telefone', formatPhone(e.target.value))}
+                className={errors.telefone ? 'border-destructive' : ''}
+              />
+              {errors.telefone && <p className="text-xs text-destructive">{errors.telefone}</p>}
+            </div>
           </div>
+
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="space-y-2"><Label>Palavra Chave</Label><Input placeholder="Ex.: fraldas, higiene" value={form.palavra_chave} onChange={e => set('palavra_chave', e.target.value)} /></div>
-            <div className="space-y-2"><Label>CNPJ</Label><Input placeholder="00.000.000/0000-00" value={form.cnpj} onChange={e => set('cnpj', formatCnpj(e.target.value))} className={errors.cnpj ? 'border-destructive' : ''} />{errors.cnpj && <p className="text-xs text-destructive">{errors.cnpj}</p>}</div>
-            <div className="space-y-2"><Label>Projeto</Label><Select value={form.projeto} onValueChange={v => set('projeto', v)}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{PROJETOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2">
+              <Label>Palavras-Chave (Segmentos / Produtos)</Label>
+              <Input
+                placeholder="Ex.: fraldas, higiene, papelaria, van"
+                value={form.palavra_chave}
+                onChange={e => set('palavra_chave', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>CNPJ</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs text-primary hover:text-primary hover:bg-primary/10 gap-1 px-2 font-medium"
+                  onClick={handleConsultarCnpj}
+                  disabled={loadingCnpj || (form.cnpj || '').replace(/\D/g, '').length !== 14}
+                  title="Consultar dados da empresa na Receita Federal via BrasilAPI"
+                >
+                  {loadingCnpj ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                  {loadingCnpj ? 'Consultando...' : 'Buscar na Receita'}
+                </Button>
+              </div>
+              <Input
+                placeholder="00.000.000/0000-00"
+                value={form.cnpj}
+                onChange={e => {
+                  const formatted = formatCnpj(e.target.value);
+                  set('cnpj', formatted);
+                  if (cnpjFeedback) setCnpjFeedback('');
+                }}
+                className={errors.cnpj ? 'border-destructive' : ''}
+              />
+              {cnpjFeedback && (
+                <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> {cnpjFeedback}
+                </p>
+              )}
+              {errors.cnpj && <p className="text-xs text-destructive">{errors.cnpj}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>Projeto Vinculado</Label>
+              <Select value={form.projeto || '__none__'} onValueChange={v => set('projeto', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um projeto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Nenhum projeto vinculado</SelectItem>
+                  {listaProjetos.map(p => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-2"><Label>Status</Label><Select value={form.status} onValueChange={v => set('status', v)}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ativo">Ativo</SelectItem><SelectItem value="inativo">Inativo</SelectItem></SelectContent></Select></div>
-          <div className="space-y-3"><Label>Permissão Para</Label><div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">{PERMISSOES.map(perm => (<label key={perm} className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-accent transition-colors cursor-pointer text-sm"><Checkbox checked={form.permissao_para.includes(perm)} onCheckedChange={() => togglePerm(perm)} />{perm}</label>))}</div></div>
-          <div className="space-y-2"><Label>Observação</Label><Textarea placeholder="Observações adicionais..." value={form.observacao} onChange={e => set('observacao', e.target.value)} rows={4} /></div>
+
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={v => set('status', v)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ativo">Ativo</SelectItem>
+                <SelectItem value="inativo">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-3">
+            <Label>Permissões e Atuação</Label>
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {PERMISSOES.map(perm => (
+                <label
+                  key={perm}
+                  className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border hover:bg-accent/60 transition-colors cursor-pointer text-sm"
+                >
+                  <Checkbox
+                    checked={form.permissao_para.includes(perm)}
+                    onCheckedChange={() => togglePerm(perm)}
+                  />
+                  <span>{perm}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Observações Internas</Label>
+            <Textarea
+              placeholder="Histórico de parcerias, condições especiais, acordos firmados..."
+              value={form.observacao}
+              onChange={e => set('observacao', e.target.value)}
+              rows={4}
+            />
+          </div>
+
           <div className="flex items-center gap-3 pt-2">
-            <Button type="submit" disabled={isSubmitting} className="gap-2">{isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Salvando...</> : <><Save className="h-4 w-4" />{initialData ? 'Atualizar' : 'Cadastrar'}</>}</Button>
-            {onCancel && <Button type="button" variant="outline" onClick={onCancel} className="gap-2"><X className="h-4 w-4" />Cancelar</Button>}
+            <Button type="submit" disabled={isSubmitting} className="gap-2">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  {initialData ? 'Salvar Alterações' : 'Cadastrar Fornecedor'}
+                </>
+              )}
+            </Button>
+            {onCancel && (
+              <Button type="button" variant="outline" onClick={onCancel} className="gap-2">
+                <X className="h-4 w-4" />
+                Cancelar
+              </Button>
+            )}
           </div>
         </form>
       </CardContent>

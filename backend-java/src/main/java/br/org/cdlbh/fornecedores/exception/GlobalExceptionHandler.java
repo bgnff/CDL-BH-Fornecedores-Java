@@ -126,8 +126,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex) {
-        // Se a mensagem já estiver no formato esperado, usa ela
-        // Caso contrário, usa a mensagem da exceção
+        logger.error("RuntimeException capturada: ", ex);
         String message = ex.getMessage();
         
         // Determina o status HTTP baseado na mensagem

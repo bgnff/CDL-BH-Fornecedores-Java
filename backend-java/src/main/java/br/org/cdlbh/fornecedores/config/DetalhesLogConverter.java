@@ -64,12 +64,18 @@ public class DetalhesLogConverter implements AttributeConverter<Map<String, Obje
             return Map.of();
         }
         try {
-            // Converte a string JSON de volta para Map<String, Object>
-            // TypeReference é necessário porque o Jackson precisa saber o tipo genérico
-            return objectMapper.readValue(dbData, new TypeReference<Map<String, Object>>() {});
-        } catch (JsonProcessingException e) {
-            // Se der erro na conversão, lança RuntimeException
-            throw new RuntimeException("Erro ao converter JSON para map", e);
+            String json = dbData.trim();
+            // Se veio serializado como string JSON escapada (ex: "\"{\\\"nome\\\":...}\"")
+            if (json.startsWith("\"") && json.endsWith("\"") && json.length() > 2) {
+                try {
+                    json = objectMapper.readValue(json, String.class);
+                } catch (Exception ignored) {
+                }
+            }
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            // Fallback seguro para evitar erro 500 na listagem de logs
+            return Map.of("resumo", dbData);
         }
     }
 }

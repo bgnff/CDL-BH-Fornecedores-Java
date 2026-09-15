@@ -10,6 +10,8 @@ import Fornecedores from '@/pages/Fornecedores';
 import CadastrarFornecedor from '@/pages/CadastrarFornecedor';
 import FornecedorDetalhe from '@/pages/FornecedorDetalhe';
 import EditarFornecedor from '@/pages/EditarFornecedor';
+import Projetos from '@/pages/Projetos';
+import Auditoria from '@/pages/Auditoria';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
 
@@ -33,6 +35,8 @@ function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/fornecedores" element={<Fornecedores />} />
+          <Route path="/projetos" element={<Projetos />} />
+          <Route path="/auditoria" element={<Auditoria />} />
           <Route path="/cadastrar" element={<CadastrarFornecedor />} />
           <Route path="/fornecedores/:id" element={<FornecedorDetalhe />} />
           <Route path="/fornecedores/:id/editar" element={<EditarFornecedor />} />

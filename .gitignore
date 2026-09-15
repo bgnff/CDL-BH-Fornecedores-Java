@@ -1,0 +1,22 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+backend-java/.env
+
+# Dependencies
+node_modules/
+backend-java/target/
+
+# Build output
+frontend/dist/
+frontend/build/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

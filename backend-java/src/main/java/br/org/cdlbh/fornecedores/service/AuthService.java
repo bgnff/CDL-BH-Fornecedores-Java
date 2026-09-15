@@ -67,10 +67,9 @@ public class AuthService {
         // ("Credenciais inválidas"), para evitar que alguém descubra, por tentativa
         // e erro, quais e-mails estão cadastrados no sistema (enumeração de usuários)
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new CredenciaisInvalidasException("Credenciais inválidas."));
                 .orElseThrow(() -> {
                     System.out.println("[AuthService] Usuário não encontrado: " + request.getEmail());
-                    return new RuntimeException("Credenciais inválidas.");
+                    return new CredenciaisInvalidasException("Credenciais inválidas.");
                 });
 
         System.out.println("[AuthService] Usuário encontrado: " + usuario.getEmail() + ", ID: " + usuario.getId());

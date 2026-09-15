@@ -106,6 +106,20 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Driver JDBC oficial do PostgreSQL para conexão com Supabase -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Banco de Dados em Memória H2 para Modo de Teste Local -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- 
             jjwt (JSON Web Token)
             Biblioteca para criar e validar tokens JWT
@@ -152,6 +166,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <version>1.18.36</version>
             <optional>true</optional>
         </dependency>
 
@@ -182,6 +197,19 @@
     <!-- Build configuration -->
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.36</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <!-- 
                 spring-boot-maven-plugin
                 Plugin do Maven que empacota a aplicação como JAR executável

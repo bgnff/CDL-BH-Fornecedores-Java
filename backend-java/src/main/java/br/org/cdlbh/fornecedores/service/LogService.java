@@ -70,4 +70,16 @@ public class LogService {
         // Salva no banco
         logRepository.save(log);
     }
+
+    /**
+     * Lista todos os logs de auditoria em ordem decrescente de criação
+     * 
+     * @return Lista de LogResponse
+     */
+    public java.util.List<br.org.cdlbh.fornecedores.dto.LogResponse> listarTodos() {
+        return logRepository.findAllByOrderByCreatedAtDesc()
+                .stream()
+                .map(br.org.cdlbh.fornecedores.dto.LogResponse::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+    }
 }

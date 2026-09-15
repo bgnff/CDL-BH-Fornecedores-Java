@@ -58,7 +58,7 @@ public class Usuario {
      * - EnumType.STRING: Armazena o nome do enum como string ('admin', 'user')
      * - Alternativa seria ORDINAL (armazena 0, 1, 2...), mas STRING é mais legível
      */
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = br.org.cdlbh.fornecedores.config.RoleConverter.class)
     @Column(nullable = false, length = 20)
     private Role role;
 

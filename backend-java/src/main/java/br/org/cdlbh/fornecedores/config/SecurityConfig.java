@@ -88,8 +88,8 @@ public class SecurityConfig {
         // Converte a string de origens em lista (separada por vírgula)
         List<String> allowedOrigins = Arrays.asList(corsAllowedOrigins.split(","));
         
-        // Configura as origens permitidas
-        configuration.setAllowedOrigins(allowedOrigins);
+        // Configura as origens permitidas (compatível com allowCredentials e wildcards)
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         
         // Métodos HTTP permitidos
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
