@@ -79,6 +79,26 @@ export const auth = {
     return data;
   },
 
+  async signUp(email, password, fullName) {
+    if (isMockMode()) {
+      throw new Error('Cadastro de novos usuários não disponível no modo de teste local.');
+    }
+    if (isSupabaseConfigured()) {
+      return supabaseAuth.signUp(email, password, fullName);
+    }
+    throw new Error('Cadastro disponível apenas via Supabase.');
+  },
+
+  async resendConfirmation(email) {
+    if (isMockMode()) {
+      throw new Error('Reenvio de confirmação não aplicável ao modo de teste.');
+    }
+    if (isSupabaseConfigured()) {
+      return supabaseAuth.resendConfirmation(email);
+    }
+    throw new Error('Reenvio disponível apenas via Supabase.');
+  },
+
   async me() {
     if (isMockMode()) {
       return mockAuth.me();

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth } from '@/api/localClient';
+import { supabaseAuth, isSupabaseConfigured } from '@/api/supabaseClient';
 
 const AuthContext = createContext(null);
 
@@ -8,8 +9,28 @@ export function AuthProvider({ children }) {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    if (!auth.isAuthenticated()) { setIsLoadingAuth(false); return; }
-    auth.me().then(setUser).catch(() => {}).finally(() => setIsLoadingAuth(false));
+    // Escuta evento de login automático ao clicar no link do e-mail de confirmação
+    let unsubscribe = () => {};
+    if (isSupabaseConfigured() && supabaseAuth?.onAuthStateChange) {
+      unsubscribe = supabaseAuth.onAuthStateChange((event, userObj) => {
+        if (event === 'SIGNED_IN' && userObj) {
+          setUser(userObj);
+          setIsLoadingAuth(false);
+        }
+      });
+    }
+
+    if (!auth.isAuthenticated()) { 
+      setIsLoadingAuth(false); 
+      return () => unsubscribe(); 
+    }
+
+    auth.me()
+      .then(setUser)
+      .catch(() => {})
+      .finally(() => setIsLoadingAuth(false));
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (email, password) => {
@@ -18,8 +39,24 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const signUp = async (email, password, fullName) => {
+    return auth.signUp(email, password, fullName);
+  };
+
+  const resendConfirmation = async (email) => {
+    return auth.resendConfirmation(email);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoadingAuth, isAuthenticated: !!user, login, logout: () => auth.logout('/login') }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoadingAuth, 
+      isAuthenticated: !!user, 
+      login, 
+      signUp,
+      resendConfirmation,
+      logout: () => auth.logout('/login') 
+    }}>
       {children}
     </AuthContext.Provider>
   );

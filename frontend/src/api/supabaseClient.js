@@ -76,6 +76,66 @@ export const supabaseAuth = {
     return { access_token: data.session.access_token, user: userObj };
   },
 
+  async signUp(email, password, fullName) {
+    if (!supabase) throw new Error('Supabase não configurado');
+
+    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+          role: 'user',
+        },
+        emailRedirectTo: redirectUrl,
+      },
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  async resendConfirmation(email) {
+    if (!supabase) throw new Error('Supabase não configurado');
+
+    const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined;
+
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
+      },
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  onAuthStateChange(callback) {
+    if (!supabase) return () => {};
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const userObj = {
+          id: session.user.id,
+          email: session.user.email,
+          full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuário',
+          role: session.user.user_metadata?.role || 'admin',
+        };
+        localStorage.setItem('cdlbh_token', session.access_token);
+        localStorage.setItem('cdlbh_user', JSON.stringify(userObj));
+        if (callback) callback(event, userObj, session);
+      } else if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('cdlbh_token');
+        localStorage.removeItem('cdlbh_user');
+        if (callback) callback(event, null, null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  },
+
   async me() {
     const cached = localStorage.getItem('cdlbh_user');
     if (cached) {
