@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xyfsuemkcresyrtytdfy.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5ZnN1ZW1rY3Jlc3lydHl0ZGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTg5ODIsImV4cCI6MjEwNDk5NDk4Mn0.0FSsJnbuU2GtNrQakKrCVyI-tAx9Vy9E4QUBnXKtdnI';
 
 export const isSupabaseConfigured = () => {
   return Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('sua-instancia'));
@@ -117,7 +117,11 @@ export const supabaseAuth = {
   onAuthStateChange(callback) {
     if (!supabase) return () => {};
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        localStorage.removeItem('cdlbh_token');
+        localStorage.removeItem('cdlbh_user');
+        if (callback) callback('SIGNED_OUT', null, null);
+      } else if (session?.user) {
         const userObj = {
           id: session.user.id,
           email: session.user.email,
@@ -127,10 +131,6 @@ export const supabaseAuth = {
         localStorage.setItem('cdlbh_token', session.access_token);
         localStorage.setItem('cdlbh_user', JSON.stringify(userObj));
         if (callback) callback(event, userObj, session);
-      } else if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('cdlbh_token');
-        localStorage.removeItem('cdlbh_user');
-        if (callback) callback(event, null, null);
       }
     });
     return () => subscription.unsubscribe();
@@ -155,13 +155,29 @@ export const supabaseAuth = {
     throw new Error('Não autenticado');
   },
 
-  logout() {
+  async logout() {
     localStorage.removeItem('cdlbh_token');
     localStorage.removeItem('cdlbh_user');
-    if (supabase) {
-      supabase.auth.signOut().catch(() => {});
+    localStorage.removeItem('cdlbh_mock_mode');
+
+    // Remove qualquer token de sessão salvo pelo Supabase no localStorage
+    try {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) {
+      console.warn('Erro ao limpar tokens Supabase:', e);
     }
-    window.location.href = '/login';
+
+    if (supabase) {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch (e) {
+        console.warn('Erro ao deslogar do Supabase:', e);
+      }
+    }
   },
 
   isAuthenticated() {

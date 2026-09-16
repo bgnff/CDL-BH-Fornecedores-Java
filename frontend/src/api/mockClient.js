@@ -100,11 +100,10 @@ export const mockAuth = {
     };
   },
 
-  logout() {
+  async logout() {
     localStorage.removeItem('cdlbh_token');
     localStorage.removeItem('cdlbh_user');
     localStorage.removeItem('cdlbh_mock_mode');
-    window.location.href = '/login';
   },
 
   isAuthenticated() {

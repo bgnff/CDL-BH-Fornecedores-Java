@@ -18,7 +18,8 @@ import {
   resetMockData 
 } from './mockClient';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+const isBrowserLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const BASE_URL = import.meta.env.VITE_API_URL || (isBrowserLocalhost ? 'http://localhost:8080/api' : '/api');
 
 export function isMockMode() {
   return localStorage.getItem('cdlbh_mock_mode') === 'true' || import.meta.env.VITE_USE_MOCK === 'true';
@@ -109,15 +110,16 @@ export const auth = {
     return request('GET', '/auth/me');
   },
 
-  logout(redirectUrl = '/login') {
+  async logout(redirectUrl = '/login') {
     if (isMockMode()) {
-      return mockAuth.logout();
+      await mockAuth.logout();
+      return;
     }
     if (isSupabaseConfigured()) {
-      return supabaseAuth.logout();
+      await supabaseAuth.logout();
+      return;
     }
     removeToken();
-    window.location.href = redirectUrl;
   },
 
   isAuthenticated() {
