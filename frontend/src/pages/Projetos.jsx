@@ -51,7 +51,7 @@ export default function Projetos() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
@@ -67,7 +67,10 @@ export default function Projetos() {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (data) => projetosAPI.create(data),
+    mutationFn: (data) => {
+      if (!isAdmin) throw new Error('Apenas Administradores podem criar projetos.');
+      return projetosAPI.create(data);
+    },
     onSuccess: (novo) => {
       queryClient.invalidateQueries({ queryKey: ['projetos'] });
       toast.success(`Projeto "${novo.nome}" criado com sucesso!`);
@@ -79,7 +82,10 @@ export default function Projetos() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => projetosAPI.update(id, data),
+    mutationFn: ({ id, data }) => {
+      if (!isAdmin) throw new Error('Apenas Administradores podem alterar projetos.');
+      return projetosAPI.update(id, data);
+    },
     onSuccess: (atualizado) => {
       queryClient.invalidateQueries({ queryKey: ['projetos'] });
       queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
@@ -93,7 +99,10 @@ export default function Projetos() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => projetosAPI.delete(id),
+    mutationFn: (id) => {
+      if (!isAdmin) throw new Error('Apenas Administradores podem excluir projetos.');
+      return projetosAPI.delete(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projetos'] });
       queryClient.invalidateQueries({ queryKey: ['fornecedores'] });
@@ -106,6 +115,10 @@ export default function Projetos() {
   });
 
   const handleSave = (payload) => {
+    if (!isAdmin) {
+      toast.error('Apenas Administradores podem alterar projetos.');
+      return;
+    }
     if (selectedProjeto?.id) {
       updateMutation.mutate({ id: selectedProjeto.id, data: payload });
     } else {
@@ -114,11 +127,13 @@ export default function Projetos() {
   };
 
   const handleOpenCreate = () => {
+    if (!isAdmin) return;
     setSelectedProjeto(null);
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (proj) => {
+    if (!isAdmin) return;
     setSelectedProjeto(proj);
     setDialogOpen(true);
   };
@@ -159,88 +174,84 @@ export default function Projetos() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-            <FolderKanban className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Projetos Sociais</h1>
-            <p className="text-sm text-muted-foreground">
-              Programas e iniciativas sociais mantidos pela Fundação CDL-BH
-            </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card border border-border rounded-xl p-6 shadow-sm">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
+              <FolderKanban className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                Projetos Sociais
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Programas e iniciativas sociais mantidos pela Fundação CDL-BH
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <Button variant="outline" size="sm" className="gap-2" onClick={handleExport} disabled={filteredProjetos.length === 0}>
             <Download className="h-4 w-4" /> Exportar Excel / CSV
           </Button>
-          <Button onClick={handleOpenCreate} className="gap-2">
-            <PlusCircle className="h-4 w-4" />
-            Novo Projeto
-          </Button>
+          {isAdmin && (
+            <Button onClick={handleOpenCreate} className="gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Novo Projeto
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Cards de Métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">Total de Projetos</p>
-              <Building2 className="h-5 w-5 text-primary" />
+        <Card className="border border-border/60 shadow-sm">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-semibold">Total de Projetos</p>
+              {isLoading ? <div className="h-8 w-16 bg-muted animate-pulse mt-1 rounded" /> : <h3 className="text-2xl font-bold mt-1">{totalProjetos}</h3>}
             </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <p className="text-3xl font-bold">{totalProjetos}</p>
-            )}
+            <div className="p-2 bg-primary/10 text-primary rounded-lg">
+              <Building2 className="w-5 h-5" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">Projetos com Fornecedores</p>
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
+        <Card className="border border-border/60 shadow-sm">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-semibold">Com Fornecedores</p>
+              {isLoading ? (
+                <div className="h-8 w-16 bg-muted animate-pulse mt-1 rounded" />
+              ) : (
+                <h3 className="text-2xl font-bold mt-1 text-emerald-600">
+                  {comFornecedores} <span className="text-sm font-normal text-muted-foreground">({totalProjetos ? Math.round((comFornecedores / totalProjetos) * 100) : 0}%)</span>
+                </h3>
+              )}
             </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold">{comFornecedores}</span>
-                <span className="text-xs text-muted-foreground">
-                  ({totalProjetos ? Math.round((comFornecedores / totalProjetos) * 100) : 0}%)
-                </span>
-              </div>
-            )}
+            <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
+              <TrendingUp className="w-5 h-5" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-muted-foreground">Fornecedores Vinculados</p>
-              <Users className="h-5 w-5 text-violet-600" />
+        <Card className="border border-border/60 shadow-sm">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-semibold">Fornecedores Vinculados</p>
+              {isLoading ? <div className="h-8 w-16 bg-muted animate-pulse mt-1 rounded" /> : <h3 className="text-2xl font-bold mt-1 text-violet-600">{totalFornecedoresVinculados}</h3>}
             </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <p className="text-3xl font-bold">{totalFornecedoresVinculados}</p>
-            )}
+            <div className="p-2 bg-violet-500/10 text-violet-600 rounded-lg">
+              <Users className="w-5 h-5" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Barra de Busca e Visualização */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+      <Card className="border border-border/60 shadow-sm">
+        <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -273,7 +284,8 @@ export default function Projetos() {
             </Button>
           </div>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Conteúdo: Cards ou Tabela */}
       {isLoading ? (
@@ -306,11 +318,11 @@ export default function Projetos() {
             <Button variant="outline" size="sm" onClick={() => setSearch('')}>
               Limpar busca
             </Button>
-          ) : (
+          ) : isAdmin ? (
             <Button size="sm" onClick={handleOpenCreate}>
               <PlusCircle className="mr-2 h-4 w-4" /> Cadastrar Projeto
             </Button>
-          )}
+          ) : null}
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -319,7 +331,7 @@ export default function Projetos() {
             return (
               <Card
                 key={proj.id}
-                className="flex flex-col justify-between hover:shadow-md transition-all duration-200 border-border/80 hover:border-primary/40 group"
+                className="flex flex-col justify-between hover:shadow-md transition-all duration-200 border-border/80 hover:border-primary/40 group h-full"
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
@@ -341,15 +353,17 @@ export default function Projetos() {
                     </div>
 
                     <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                        title="Editar projeto"
-                        onClick={() => handleOpenEdit(proj)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          title="Editar projeto"
+                          onClick={() => handleOpenEdit(proj)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       {isAdmin && (
                         <Button
                           variant="ghost"
@@ -435,14 +449,16 @@ export default function Projetos() {
                         >
                           Ver
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground"
-                          onClick={() => handleOpenEdit(proj)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground"
+                            onClick={() => handleOpenEdit(proj)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         {isAdmin && (
                           <Button
                             variant="ghost"
@@ -465,7 +481,7 @@ export default function Projetos() {
 
       {/* Modal de Criação / Edição */}
       <ProjetoDialog
-        open={dialogOpen}
+        open={dialogOpen && isAdmin}
         onOpenChange={setDialogOpen}
         initialData={selectedProjeto}
         onSave={handleSave}
@@ -474,7 +490,7 @@ export default function Projetos() {
 
       {/* Confirmação de Exclusão */}
       <AlertDialog
-        open={Boolean(deleteTarget)}
+        open={Boolean(deleteTarget && isAdmin)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
         <AlertDialogContent>
