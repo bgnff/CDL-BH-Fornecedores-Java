@@ -45,7 +45,7 @@ function cleanFileName(fileName) {
 
 export default function DocumentosSection({ fornecedorId }) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
   const queryClient = useQueryClient();
 
   const [showForm, setShowForm] = useState(false);
@@ -74,7 +74,10 @@ export default function DocumentosSection({ fornecedorId }) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => documentosAPI.create({ ...data, fornecedor_id: fornecedorId }),
+    mutationFn: (data) => {
+      if (!isAdmin) throw new Error('Apenas Administradores têm permissão para anexar documentos ou contratos.');
+      return documentosAPI.create({ ...data, fornecedor_id: fornecedorId });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documentos', fornecedorId] });
       queryClient.invalidateQueries({ queryKey: ['documentosVencendo'] });
@@ -82,17 +85,21 @@ export default function DocumentosSection({ fornecedorId }) {
       setShowForm(false);
       setForm({ nome: '', tipo: 'Contrato', data_vencimento: '', arquivo_url: '', observacao: '' });
     },
-    onError: () => toast.error('Erro ao salvar documento.'),
+    onError: (err) => toast.error(err.message || 'Erro ao salvar documento.'),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => documentosAPI.delete(id),
+    mutationFn: (id) => {
+      if (!isAdmin) throw new Error('Apenas Administradores têm permissão para excluir documentos ou contratos.');
+      return documentosAPI.delete(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documentos', fornecedorId] });
       queryClient.invalidateQueries({ queryKey: ['documentosVencendo'] });
       toast.success('Documento removido.');
       setDeleteTarget(null);
     },
+    onError: (err) => toast.error(err.message || 'Erro ao excluir documento.'),
   });
 
   const parseLocalDate = (dateStr) => {
@@ -146,6 +153,10 @@ export default function DocumentosSection({ fornecedorId }) {
 
   const handleDrop = (filesList) => {
     setIsDragging(false);
+    if (!isAdmin) {
+      toast.error('Apenas Administradores têm permissão para anexar documentos ou contratos.');
+      return;
+    }
     if (!filesList || filesList.length === 0) return;
 
     if (filesList.length > 1) {
@@ -241,15 +252,17 @@ export default function DocumentosSection({ fornecedorId }) {
   return (
     <Card
       onDragOver={(e) => {
+        if (!isAdmin) return;
         e.preventDefault();
         setIsDragging(true);
       }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={(e) => {
+        if (!isAdmin) return;
         e.preventDefault();
         handleDrop(e.dataTransfer.files);
       }}
-      className={`transition-colors ${isDragging ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : ''}`}
+      className={`transition-colors ${isDragging && isAdmin ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : ''}`}
     >
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg flex items-center gap-2">

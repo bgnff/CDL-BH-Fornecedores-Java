@@ -34,6 +34,16 @@ public class FornecedorResponse {
     private String empresa_pf;
 
     /**
+     * Tipo de pessoa (PJ ou PF)
+     */
+    private String tipo_pessoa;
+
+    /**
+     * Se o fornecedor é favorito
+     */
+    private Boolean favorito;
+
+    /**
      * CNPJ
      */
     private String cnpj;
@@ -94,6 +104,8 @@ public class FornecedorResponse {
         response.setId(fornecedor.getId());
         response.setNome(fornecedor.getNome());
         response.setEmpresa_pf(fornecedor.getEmpresaPf());
+        response.setTipo_pessoa(fornecedor.getTipoPessoa() != null ? fornecedor.getTipoPessoa() : "PJ");
+        response.setFavorito(fornecedor.getFavorito() != null ? fornecedor.getFavorito() : false);
         response.setCnpj(fornecedor.getCnpj());
         response.setEmail(fornecedor.getEmail());
         response.setTelefone(fornecedor.getTelefone());

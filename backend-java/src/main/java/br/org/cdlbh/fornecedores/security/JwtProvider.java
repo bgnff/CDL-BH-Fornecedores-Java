@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Brayan Oliveira de Souza
+ * Todos os direitos reservados.
+ *
+ * Protegido sob a Lei Federal nº 9.609/1998 (Lei do Software)
+ * e Lei Federal nº 9.610/1998 (Direitos Autorais).
+ */
 package br.org.cdlbh.fornecedores.security;
 
 import io.jsonwebtoken.*;
@@ -11,6 +18,7 @@ import java.util.Date;
 
 /**
  * Componente responsável por gerar e validar tokens JWT
+ * Autor: Brayan Oliveira de Souza
  * 
  * @Component: Marca esta classe como um componente Spring gerenciado
  * - O Spring vai criar uma instância automaticamente e injetar onde for necessário

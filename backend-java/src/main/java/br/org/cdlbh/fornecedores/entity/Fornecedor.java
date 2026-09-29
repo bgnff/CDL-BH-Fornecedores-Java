@@ -107,6 +107,18 @@ public class Fornecedor {
     private Status status;
 
     /**
+     * Indica se o fornecedor é favorito
+     */
+    @Column(name = "favorito", nullable = false)
+    private Boolean favorito = false;
+
+    /**
+     * Tipo de pessoa (PJ ou PF)
+     */
+    @Column(name = "tipo_pessoa", length = 10)
+    private String tipoPessoa = "PJ";
+
+    /**
      * Timestamp de criação
      */
     @Column(name = "created_at", nullable = false, updatable = false)

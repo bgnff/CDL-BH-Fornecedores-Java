@@ -48,7 +48,7 @@ public class ProjetoService {
     @SuppressWarnings("null")
     public ProjetoDTO buscarPorId(Long id) {
         Projeto projeto = projetoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Projeto não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Projeto não encontrado."));
         long count = fornecedorRepository.countByProjetoId(id);
         return ProjetoDTO.fromEntity(projeto, count);
     }
@@ -83,7 +83,7 @@ public class ProjetoService {
     @SuppressWarnings("null")
     public ProjetoDTO atualizar(Long id, ProjetoRequest request, Long usuarioId, String usuarioNome) {
         Projeto p = projetoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Projeto não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Projeto não encontrado."));
 
         String novoNome = request.getNome().trim();
         if (projetoRepository.existsByNomeIgnoreCaseAndIdNot(novoNome, id)) {
@@ -110,13 +110,15 @@ public class ProjetoService {
     @SuppressWarnings("null")
     public void excluir(Long id, Long usuarioId, String usuarioNome) {
         Projeto p = projetoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Projeto não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Projeto não encontrado."));
 
         // Desvincula fornecedores associados sem apagá-los (ON DELETE SET NULL)
         List<Fornecedor> fornecedores = fornecedorRepository.findByProjetoId(id);
-        for (Fornecedor f : fornecedores) {
-            f.setProjeto(null);
-            fornecedorRepository.save(f);
+        if (!fornecedores.isEmpty()) {
+            for (Fornecedor f : fornecedores) {
+                f.setProjeto(null);
+            }
+            fornecedorRepository.saveAll(fornecedores);
         }
 
         projetoRepository.delete(p);

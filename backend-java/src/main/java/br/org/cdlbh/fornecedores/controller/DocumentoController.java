@@ -128,7 +128,7 @@ public class DocumentoController {
 
         // Extrai dados do usuário para auditoria
         Long usuarioId = Long.parseLong(authentication.getName());
-        String usuarioNome = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+        String usuarioNome = authentication.getCredentials() != null ? authentication.getCredentials().toString() : "Usuário";
         
         // Chama o service para criar
         Documento response = documentoService.criar(documento, targetFornecedorId, usuarioId, usuarioNome);
@@ -153,7 +153,7 @@ public class DocumentoController {
                                              @RequestBody Documento dados,
                                              Authentication authentication) {
         Long usuarioId = Long.parseLong(authentication.getName());
-        String usuarioNome = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+        String usuarioNome = authentication.getCredentials() != null ? authentication.getCredentials().toString() : "Usuário";
         
         Documento response = documentoService.atualizar(id, dados, usuarioId, usuarioNome);
         return ResponseEntity.ok(response);
@@ -175,7 +175,7 @@ public class DocumentoController {
     public ResponseEntity<Map<String, Boolean>> excluir(@PathVariable Long id,
                                                        Authentication authentication) {
         Long usuarioId = Long.parseLong(authentication.getName());
-        String usuarioNome = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+        String usuarioNome = authentication.getCredentials() != null ? authentication.getCredentials().toString() : "Usuário";
         
         documentoService.excluir(id, usuarioId, usuarioNome);
         return ResponseEntity.ok(Map.of("success", true));

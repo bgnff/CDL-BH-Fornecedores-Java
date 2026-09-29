@@ -60,7 +60,7 @@ public class DocumentoService {
     @SuppressWarnings("null")
     public Documento buscarPorId(Long id) {
         return documentoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Documento não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Documento não encontrado."));
     }
 
     /**
@@ -98,7 +98,7 @@ public class DocumentoService {
     public Documento criar(Documento documento, Long fornecedorId, Long usuarioId, String usuarioNome) {
         // Busca o fornecedor
         Fornecedor fornecedor = fornecedorRepository.findById(fornecedorId)
-                .orElseThrow(() -> new RuntimeException("Fornecedor não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Fornecedor não encontrado."));
         
         // Define o fornecedor no documento
         documento.setFornecedor(fornecedor);
@@ -127,7 +127,7 @@ public class DocumentoService {
     public Documento atualizar(Long id, Documento dados, Long usuarioId, String usuarioNome) {
         // Busca o documento atual
         Documento documento = documentoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Documento não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Documento não encontrado."));
 
         // Atualiza os campos
         documento.setNome(dados.getNome());
@@ -157,7 +157,7 @@ public class DocumentoService {
     @SuppressWarnings("null")
     public void excluir(Long id, Long usuarioId, String usuarioNome) {
         Documento documento = documentoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Documento não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Documento não encontrado."));
 
         // Registra log de auditoria antes de excluir
         logService.registrarLog(usuarioId, usuarioNome, "DELETE", "documentos", documento.getId(), 

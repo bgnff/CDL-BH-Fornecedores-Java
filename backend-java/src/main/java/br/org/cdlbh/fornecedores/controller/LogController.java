@@ -23,11 +23,12 @@ public class LogController {
 
     /**
      * Lista todos os logs de auditoria
-     * Acessível por usuários autenticados (com visão gerencial/auditoria)
+     * Acessível EXCLUSIVAMENTE por administradores
      * 
      * GET /api/logs
      */
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<LogResponse>> listarLogs() {
         List<LogResponse> logs = logService.listarTodos();
         return ResponseEntity.ok(logs);

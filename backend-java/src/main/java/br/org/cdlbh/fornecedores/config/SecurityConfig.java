@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Brayan Oliveira de Souza
+ * Todos os direitos reservados.
+ *
+ * Protegido sob a Lei Federal nº 9.609/1998 (Lei do Software)
+ * e Lei Federal nº 9.610/1998 (Direitos Autorais).
+ */
 package br.org.cdlbh.fornecedores.config;
 
 import br.org.cdlbh.fornecedores.security.JwtAuthenticationFilter;
@@ -88,17 +95,25 @@ public class SecurityConfig {
         // Converte a string de origens em lista (separada por vírgula)
         List<String> allowedOrigins = Arrays.asList(corsAllowedOrigins.split(","));
         
-        // Configura as origens permitidas (compatível com allowCredentials e wildcards)
-        configuration.setAllowedOriginPatterns(allowedOrigins);
+        // Configura as origens permitidas
+        if (allowedOrigins.contains("*")) {
+            configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:[*]", "http://127.0.0.1:[*]", "https://*.netlify.app", "https://*.cdlbh.org.br"));
+        } else {
+            configuration.setAllowedOriginPatterns(allowedOrigins);
+        }
         
         // Métodos HTTP permitidos
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         
         // Headers permitidos (inclui Authorization para JWT)
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
         
-        // Permite enviar cookies/credentials (não usamos neste projeto, mas é boa prática)
+        // Expõe headers importantes para o cliente
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Disposition"));
+        
+        // Permite enviar cookies/credentials com origens controladas
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
         
         // Configura a origem baseada em URL
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -108,75 +123,52 @@ public class SecurityConfig {
     }
 
     /**
-     * Configura a cadeia de filtros de segurança
-     * 
-     * Este é o método principal onde definimos:
-     * - Quais endpoints são públicos (não exigem autenticação)
-     * - Quais endpoints exigem autenticação
-     * - Como autenticar (via JWT)
-     * - Headers de segurança (CSP, HSTS, etc.)
-     * 
-     * @param http Objeto de configuração HTTP do Spring Security
-     * @return SecurityFilterChain configurado
-     * @throws Exception Se houver erro na configuração
+     * Configura a cadeia de filtros de segurança com headers de defesa em profundidade (OWASP)
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Desabilita CSRF (Cross-Site Request Forgery)
-                // CSRF é relevante para aplicações com sessões (cookies)
-                // Como usamos JWT (stateless), CSRF não é necessário
+                // Desabilita CSRF pois usamos JWT stateless via Bearer header
                 .csrf(csrf -> csrf.disable())
                 
-                // Configura CORS
+                // Configura CORS controlado
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 
                 // Configura autorização de requisições
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints públicos (não exigem autenticação)
+                        // Endpoints públicos estritos
                         .requestMatchers("/api/auth/login", "/api/health").permitAll()
-                        
-                        // Todas as outras requisições exigem autenticação
+                        // Console H2 se ativo em ambiente local
+                        .requestMatchers("/h2-console/**").permitAll()
+                        // Todas as outras requisições exigem autenticação válida
                         .anyRequest().authenticated()
                 )
                 
-                // Configura gestão de sessão como STATELESS
-                // STATELESS: O servidor não mantém sessão do usuário
-                // Cada requisição deve incluir o token JWT
-                // Isso é ideal para APIs REST e escalabilidade horizontal
+                // Configura gestão de sessão como STATELESS (sem sessões no servidor)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 
-                // Adiciona headers de segurança HTTP (equivalente ao Helmet do Node.js)
-                // Esses headers protegem contra diversos ataques
+                // Headers avançados de segurança HTTP (OWASP Recommended)
                 .headers(headers -> headers
-                        // X-Content-Type-Options: Previne sniffing de MIME type
-                        .contentTypeOptions(contentType -> contentType.disable())
+                        // Previne sniffing de MIME type
+                        .contentTypeOptions(org.springframework.security.config.Customizer.withDefaults())
                         
-                        // X-Frame-Options: Previne clickjacking (site dentro de iframe)
+                        // Previne clickjacking (mesma origem para iframes locais como h2-console)
                         .frameOptions(frame -> frame.sameOrigin())
                         
-                        // X-XSS-Protection: Habilita filtro XSS do navegador
-                        .xssProtection(xss -> xss.disable())
+                        // Referrer Policy estrita
+                        .referrerPolicy(referrer -> referrer
+                                .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN)
+                        )
                         
-                        // Strict-Transport-Security (HSTS): Força HTTPS
-                        // Importante para produção, mas pode causar problemas em desenvolvimento HTTP
-                        // .httpStrictTransportSecurity(hsts -> hsts
-                        //         .includeSubDomains(true)
-                        //         .maxAgeInSeconds(31536000)
-                        // )
-                        
-                        // Content-Security-Policy (CSP): Controla quais recursos podem ser carregados
-                        // Previne XSS ao restringir origens de scripts, estilos, etc.
-                        // .contentSecurityPolicy(csp -> csp
-                        //         .policyDirectives(policy -> "default-src 'self'")
-                        // )
+                        // Permissions Policy: desabilita recursos desnecessários do navegador
+                        .permissionsPolicy(permissions -> permissions
+                                .policy("camera=(), microphone=(), geolocation=(), payment=()")
+                        )
                 )
                 
-                // Adiciona nosso filtro JWT antes do filtro de autenticação padrão
-                // UsernamePasswordAuthenticationFilter é onde o Spring Security tenta autenticar
-                // Adicionamos antes para que nosso JWT filter processe primeiro
+                // Adiciona filtro JWT antes do filtro de autenticação padrão
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

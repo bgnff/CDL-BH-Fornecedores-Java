@@ -1,6 +1,9 @@
 -- ============================================================
 -- Schema PostgreSQL / Supabase: Sistema de Gestão de Fornecedores
 -- Fundação CDL-BH
+-- Copyright (c) 2026 Brayan Oliveira de Souza
+-- Todos os direitos reservados.
+-- Protegido sob a Lei Federal nº 9.609/1998 e Lei Federal nº 9.610/1998.
 -- ============================================================
 
 -- 1. Habilitar extensões necessárias
@@ -135,6 +138,37 @@ CREATE INDEX IF NOT EXISTS idx_backup_tipo ON public.backup_metadata(tipo);
 CREATE INDEX IF NOT EXISTS idx_backup_executado ON public.backup_metadata(executado_em DESC);
 
 -- ============================================================
+-- TABELA: beneficiarios
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.beneficiarios (
+  id              BIGSERIAL PRIMARY KEY,
+  nome            VARCHAR(200) NOT NULL,
+  cpf             VARCHAR(20),
+  data_nascimento DATE,
+  telefone        VARCHAR(30),
+  email           VARCHAR(200),
+  projeto_id      BIGINT REFERENCES public.projetos(id) ON DELETE SET NULL ON UPDATE CASCADE,
+  bairro          VARCHAR(150),
+  status          VARCHAR(30) NOT NULL DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Em Acompanhamento', 'Concluído', 'Inativo')),
+  observacao      TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::TEXT, now()),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::TEXT, now())
+);
+
+COMMENT ON TABLE public.beneficiarios IS 'Pessoas atendidas pelos projetos sociais da Fundação CDL-BH';
+
+DROP TRIGGER IF EXISTS trg_beneficiarios_updated_at ON public.beneficiarios;
+CREATE TRIGGER trg_beneficiarios_updated_at
+BEFORE UPDATE ON public.beneficiarios
+FOR EACH ROW
+EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_beneficiarios_projeto ON public.beneficiarios(projeto_id);
+CREATE INDEX IF NOT EXISTS idx_beneficiarios_status ON public.beneficiarios(status);
+CREATE INDEX IF NOT EXISTS idx_beneficiarios_cpf ON public.beneficiarios(cpf);
+CREATE INDEX IF NOT EXISTS idx_beneficiarios_created ON public.beneficiarios(created_at DESC);
+
+-- ============================================================
 -- STORAGE BUCKET: documentos-fornecedores
 -- ============================================================
 -- Cria o bucket no Supabase Storage caso não exista
@@ -148,6 +182,7 @@ ON CONFLICT (id) DO UPDATE SET public = true;
 ALTER TABLE public.projetos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fornecedores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documentos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.beneficiarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.backup_metadata ENABLE ROW LEVEL SECURITY;
 
@@ -157,6 +192,13 @@ CREATE POLICY "Permitir leitura de projetos" ON public.projetos FOR SELECT USING
 
 DROP POLICY IF EXISTS "Permitir escrita de projetos" ON public.projetos;
 CREATE POLICY "Permitir escrita de projetos" ON public.projetos FOR ALL USING (true) WITH CHECK (true);
+
+-- Políticas para beneficiários
+DROP POLICY IF EXISTS "Permitir leitura de beneficiarios" ON public.beneficiarios;
+CREATE POLICY "Permitir leitura de beneficiarios" ON public.beneficiarios FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Permitir escrita de beneficiarios" ON public.beneficiarios;
+CREATE POLICY "Permitir escrita de beneficiarios" ON public.beneficiarios FOR ALL USING (true) WITH CHECK (true);
 
 -- Políticas para fornecedores
 DROP POLICY IF EXISTS "Permitir leitura de fornecedores" ON public.fornecedores;

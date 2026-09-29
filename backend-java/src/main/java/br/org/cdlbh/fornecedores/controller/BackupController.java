@@ -81,9 +81,13 @@ public class BackupController {
             Path filepath = backupService.getBackupPath(filename);
             Resource resource = new FileSystemResource(filepath);
 
-            // Configura headers para download
+            // Configura headers para download usando ContentDisposition builder (previne header injection)
             HttpHeaders headers = new HttpHeaders();
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+            headers.setContentDisposition(
+                    org.springframework.http.ContentDisposition.attachment()
+                            .filename(filepath.getFileName().toString())
+                            .build()
+            );
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
 
             return ResponseEntity.ok()

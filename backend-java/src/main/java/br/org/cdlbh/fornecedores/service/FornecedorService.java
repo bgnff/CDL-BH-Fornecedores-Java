@@ -56,7 +56,7 @@ public class FornecedorService {
     @SuppressWarnings("null")
     public FornecedorResponse buscarPorId(Long id) {
         Fornecedor fornecedor = fornecedorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Fornecedor não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Fornecedor não encontrado."));
         return FornecedorResponse.fromEntity(fornecedor);
     }
 
@@ -80,6 +80,14 @@ public class FornecedorService {
         fornecedor.setPalavraChave(request.getPalavra_chave());
         fornecedor.setObservacao(request.getObservacao());
         fornecedor.setPermissaoPara(request.getPermissao_para() != null ? request.getPermissao_para() : List.of());
+        
+        // Define favorito e tipo de pessoa
+        if (request.getFavorito() != null) {
+            fornecedor.setFavorito(request.getFavorito());
+        }
+        if (request.getTipo_pessoa() != null) {
+            fornecedor.setTipoPessoa(request.getTipo_pessoa());
+        }
         
         // Busca o projeto pelo nome (se fornecido)
         if (request.getProjeto() != null && !request.getProjeto().isEmpty()) {
@@ -125,7 +133,7 @@ public class FornecedorService {
     public FornecedorResponse atualizar(Long id, FornecedorRequest request, Long usuarioId, String usuarioNome) {
         // Busca o fornecedor atual
         Fornecedor fornecedor = fornecedorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Fornecedor não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Fornecedor não encontrado."));
 
         // Calcula o diff (campos que mudaram)
         Map<String, Object> alteracoes = new HashMap<>();
@@ -178,6 +186,14 @@ public class FornecedorService {
             fornecedor.setStatus(Fornecedor.Status.valueOf(request.getStatus().toLowerCase()));
         }
 
+        // Atualiza favorito e tipo_pessoa
+        if (request.getFavorito() != null) {
+            fornecedor.setFavorito(request.getFavorito());
+        }
+        if (request.getTipo_pessoa() != null) {
+            fornecedor.setTipoPessoa(request.getTipo_pessoa());
+        }
+
         // Salva no banco
         fornecedor = fornecedorRepository.save(fornecedor);
 
@@ -205,7 +221,7 @@ public class FornecedorService {
     @SuppressWarnings("null")
     public void excluir(Long id, Long usuarioId, String usuarioNome) {
         Fornecedor fornecedor = fornecedorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Fornecedor não encontrado."));
+                .orElseThrow(() -> new br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException("Fornecedor não encontrado."));
 
         // Registra log de auditoria antes de excluir
         Map<String, Object> detalhes = new HashMap<>();

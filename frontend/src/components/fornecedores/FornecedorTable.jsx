@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Pencil, Trash2, Mail, Phone, FileText } from 'lucide-react';
+import { Eye, Pencil, Trash2, Mail, Phone, FileText, Star } from 'lucide-react';
 
 function whatsappUrl(telefone) {
   const digits = (telefone || '').replace(/\D/g, '');
@@ -22,9 +22,9 @@ function WhatsAppIcon({ className }) {
   );
 }
 
-export default function FornecedorTable({ fornecedores, isLoading, onDelete }) {
+export default function FornecedorTable({ fornecedores, isLoading, onDelete, onToggleFavorito }) {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   if (isLoading) return <div className="space-y-3">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}</div>;
   if (fornecedores.length === 0) return <div className="text-center py-16"><p className="text-muted-foreground">Nenhum fornecedor encontrado.</p></div>;
@@ -35,6 +35,7 @@ export default function FornecedorTable({ fornecedores, isLoading, onDelete }) {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-10 text-center font-semibold" title="Favoritos">★</TableHead>
               <TableHead className="font-semibold">Nome</TableHead>
               <TableHead className="font-semibold">Empresa / PF</TableHead>
               <TableHead className="font-semibold hidden md:table-cell">Contato</TableHead>
@@ -46,8 +47,24 @@ export default function FornecedorTable({ fornecedores, isLoading, onDelete }) {
           <TableBody>
             {fornecedores.map(f => (
               <TableRow key={f.id} className="hover:bg-muted/30 transition-colors">
-                <TableCell><div><p className="font-medium text-sm">{f.nome}</p>{f.palavra_chave && <p className="text-xs text-muted-foreground mt-0.5">{f.palavra_chave}</p>}</div></TableCell>
-                <TableCell className="text-sm">{f.empresa_pf}</TableCell>
+                <TableCell className="w-10 text-center px-2">
+                  <button
+                    type="button"
+                    onClick={() => onToggleFavorito && onToggleFavorito(f)}
+                    className="p-1.5 rounded-full hover:bg-amber-100/50 dark:hover:bg-amber-950/40 transition-colors group cursor-pointer inline-flex items-center justify-center"
+                    title={f.favorito ? "Remover dos favoritos" : "Marcar como favorito"}
+                  >
+                    <Star
+                      className={`h-4 w-4 transition-transform duration-200 group-hover:scale-125 ${
+                        f.favorito
+                          ? "fill-amber-400 text-amber-500"
+                          : "text-muted-foreground/30 hover:text-amber-400"
+                      }`}
+                    />
+                  </button>
+                </TableCell>
+                <TableCell><div><p className="font-medium text-sm flex items-center gap-1.5">{f.nome}{f.tipo_pessoa === 'PF' && <Badge variant="outline" className="text-[10px] py-0 px-1 font-normal text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-300">PF</Badge>}</p>{f.palavra_chave && <p className="text-xs text-muted-foreground mt-0.5">{f.palavra_chave}</p>}</div></TableCell>
+                <TableCell className="text-sm">{f.tipo_pessoa === 'PF' ? (f.empresa_pf && f.empresa_pf !== f.nome ? f.empresa_pf : 'Pessoa Física') : f.empresa_pf}</TableCell>
                 <TableCell className="hidden md:table-cell"><div className="space-y-0.5">{f.email && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Mail className="h-3 w-3" /><span className="truncate max-w-[180px]">{f.email}</span></div>}{f.telefone && <div className="flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" />{f.telefone}</div>}</div></TableCell>
                 <TableCell className="hidden lg:table-cell">{f.projeto && <Badge variant="secondary" className="text-xs font-normal">{f.projeto}</Badge>}</TableCell>
                 <TableCell className="hidden lg:table-cell"><Badge className={`text-xs ${f.status === 'ativo' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>{f.status === 'ativo' ? 'Ativo' : 'Inativo'}</Badge></TableCell>

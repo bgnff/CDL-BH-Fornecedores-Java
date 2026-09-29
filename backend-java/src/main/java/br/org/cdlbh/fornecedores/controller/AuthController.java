@@ -30,6 +30,9 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private br.org.cdlbh.fornecedores.config.RateLimitConfig rateLimitConfig;
+
     /**
      * Endpoint de login
      * 
@@ -42,7 +45,14 @@ public class AuthController {
      * @return LoginResponse com token JWT e dados do usuário
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {
+        io.github.bucket4j.Bucket bucket = rateLimitConfig.resolveBucket(httpRequest);
+        if (!bucket.tryConsume(1)) {
+            return ResponseEntity.status(429).body(java.util.Map.of(
+                    "error", "Muitas tentativas de login. Aguarde alguns minutos antes de tentar novamente."
+            ));
+        }
+
         // Chama o service para processar o login
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);

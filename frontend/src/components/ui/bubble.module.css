@@ -1,0 +1,60 @@
+.hoverText {
+  display: inline-block;
+  cursor: pointer;
+  transition: 0.35s font-weight, 0.35s color, 0.35s transform, 0.35s filter;
+  font-weight: 300;
+  user-select: none;
+}
+
+.hoverText:hover {
+  font-weight: 900;
+  color: #1c3761;
+  transform: translateY(-2.5px) scale(1.18);
+  filter: drop-shadow(0 4px 8px rgba(28, 55, 97, 0.25));
+}
+
+.hoverText:hover + .hoverText {
+  font-weight: 600;
+  color: #2b528e;
+  transform: translateY(-1.2px) scale(1.08);
+}
+
+.hoverText:hover + .hoverText + .hoverText {
+  font-weight: 400;
+  color: #436da7;
+  transform: translateY(-0.6px) scale(1.03);
+}
+
+.hoverText:has(+ .hoverText:hover) {
+  font-weight: 600;
+  color: #2b528e;
+  transform: translateY(-1.2px) scale(1.08);
+}
+
+.hoverText:has(+ .hoverText + .hoverText:hover) {
+  font-weight: 400;
+  color: #436da7;
+  transform: translateY(-0.6px) scale(1.03);
+}
+
+/* Suporte para Dark Mode */
+:global(.dark) .hoverText:hover {
+  color: #93c5fd;
+  filter: drop-shadow(0 4px 10px rgba(147, 197, 253, 0.35));
+}
+
+:global(.dark) .hoverText:hover + .hoverText {
+  color: #bfdbfe;
+}
+
+:global(.dark) .hoverText:hover + .hoverText + .hoverText {
+  color: #dbeafe;
+}
+
+:global(.dark) .hoverText:has(+ .hoverText:hover) {
+  color: #bfdbfe;
+}
+
+:global(.dark) .hoverText:has(+ .hoverText + .hoverText:hover) {
+  color: #dbeafe;
+}

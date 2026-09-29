@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://xyfsuemkcresyrtytdfy.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5ZnN1ZW1rY3Jlc3lydHl0ZGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MTg5ODIsImV4cCI6MjEwNDk5NDk4Mn0.0FSsJnbuU2GtNrQakKrCVyI-tAx9Vy9E4QUBnXKtdnI';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const isSupabaseConfigured = () => {
-  return Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('sua-instancia'));
+  return Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('seu-projeto') && !supabaseUrl.includes('sua-instancia'));
 };
 
 export const supabase = isSupabaseConfigured()
@@ -49,18 +49,6 @@ export const supabaseAuth = {
     // Tenta autenticação nativa do Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      // Fallback para admin demo de emergência caso auth.users não esteja populado
-      if (email === 'admin@cdlbh.org.br' && password === 'admin123') {
-        const demoUser = {
-          id: 1,
-          email: 'admin@cdlbh.org.br',
-          full_name: 'Administrador CDL-BH',
-          role: 'admin',
-        };
-        localStorage.setItem('cdlbh_token', 'demo-token-cdlbh-admin');
-        localStorage.setItem('cdlbh_user', JSON.stringify(demoUser));
-        return { access_token: 'demo-token-cdlbh-admin', user: demoUser };
-      }
       throw error;
     }
 
@@ -244,6 +232,8 @@ export const supabaseFornecedores = {
       observacao: dados.observacao || null,
       permissao_para: dados.permissao_para || [],
       status: (dados.status || 'ativo').toLowerCase(),
+      favorito: dados.favorito !== undefined ? Boolean(dados.favorito) : false,
+      tipo_pessoa: dados.tipo_pessoa || 'PJ',
     };
 
     const { data, error } = await supabase
@@ -283,7 +273,11 @@ export const supabaseFornecedores = {
       observacao: dados.observacao || null,
       permissao_para: dados.permissao_para || [],
       status: (dados.status || 'ativo').toLowerCase(),
+      favorito: dados.favorito !== undefined ? Boolean(dados.favorito) : undefined,
+      tipo_pessoa: dados.tipo_pessoa || undefined,
     };
+    if (payload.favorito === undefined) delete payload.favorito;
+    if (payload.tipo_pessoa === undefined) delete payload.tipo_pessoa;
 
     const { data, error } = await supabase
       .from('fornecedores')
@@ -525,4 +519,318 @@ export const supabaseLogs = {
     return data || [];
   }
 };
+
+export const supabaseBeneficiarios = {
+  async list() {
+    if (!supabase) return [];
+    let data, error;
+    try {
+      const res = await supabase
+        .from('beneficiarios')
+        .select('*, projetos(nome)')
+        .order('created_at', { ascending: false });
+      data = res.data;
+      error = res.error;
+    } catch (e) {
+      error = e;
+    }
+
+    // Se falhar (por exemplo relação projetos não encontrada no cache), tenta select simples
+    if (error) {
+      const resSimple = await supabase
+        .from('beneficiarios')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!resSimple.error) {
+        data = resSimple.data;
+        error = null;
+      }
+    }
+
+    if (error) throw error;
+    return (data || []).map(b => ({
+      ...b,
+      projeto_social: b.projetos?.nome || b.projeto_social || b.projeto || 'Sem projeto',
+      favorito: Boolean(b.favorito),
+    }));
+  },
+
+  async get(id) {
+    if (!supabase) return null;
+    const { data, error } = await supabase
+      .from('beneficiarios')
+      .select('*, projetos(nome)')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return {
+      ...data,
+      projeto_social: data.projetos?.nome || data.projeto_social || data.projeto || 'Sem projeto',
+      favorito: Boolean(data.favorito),
+    };
+  },
+
+  async create(dados) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const { data, error } = await supabase
+      .from('beneficiarios')
+      .insert([{
+        nome: dados.nome,
+        cpf: dados.cpf || null,
+        data_nascimento: dados.data_nascimento || null,
+        telefone: dados.telefone || null,
+        email: dados.email || null,
+        bairro: dados.bairro || null,
+        status: dados.status || 'Ativo',
+        observacao: dados.observacao || dados.observacoes || null,
+        favorito: Boolean(dados.favorito),
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id, dados) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const updatePayload = { ...dados };
+    delete updatePayload.id;
+    delete updatePayload.projetos;
+
+    const { data, error } = await supabase
+      .from('beneficiarios')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const { error } = await supabase
+      .from('beneficiarios')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return { success: true };
+  }
+};
+
+export const supabasePrestadores = {
+  async list() {
+    if (!supabase) return [];
+    let data, error;
+    try {
+      const res = await supabase
+        .from('prestadores')
+        .select('*, projetos(nome)')
+        .order('created_at', { ascending: false });
+      data = res.data;
+      error = res.error;
+    } catch (e) {
+      error = e;
+    }
+
+    if (error) {
+      const resSimple = await supabase
+        .from('prestadores')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!resSimple.error) {
+        data = resSimple.data;
+        error = null;
+      }
+    }
+
+    if (error) throw error;
+    return (data || []).map(p => ({
+      ...p,
+      projeto: p.projetos?.nome || p.projeto || 'Sem projeto',
+      favorito: Boolean(p.favorito),
+    }));
+  },
+
+  async get(id) {
+    if (!supabase) return null;
+    const { data, error } = await supabase
+      .from('prestadores')
+      .select('*, projetos(nome)')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return {
+      ...data,
+      projeto: data.projetos?.nome || data.projeto || 'Sem projeto',
+      favorito: Boolean(data.favorito),
+    };
+  },
+
+  async create(dados) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const { data, error } = await supabase
+      .from('prestadores')
+      .insert([{
+        nome: dados.nome,
+        empresa_pf: dados.empresa_pf || dados.nome,
+        tipo_pessoa: dados.tipo_pessoa || 'PJ',
+        documento: dados.documento || dados.cnpj || dados.cpf || null,
+        servico: dados.servico || null,
+        especialidade: dados.especialidade || null,
+        telefone: dados.telefone || null,
+        email: dados.email || null,
+        projeto: dados.projeto || null,
+        cidade: dados.cidade || null,
+        status: dados.status || 'Ativo',
+        observacoes: dados.observacoes || null,
+        favorito: Boolean(dados.favorito),
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id, dados) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const updatePayload = { ...dados };
+    delete updatePayload.id;
+    delete updatePayload.projetos;
+
+    const { data, error } = await supabase
+      .from('prestadores')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const { error } = await supabase
+      .from('prestadores')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return { success: true };
+  }
+};
+
+export const supabaseParceiros = {
+  async list() {
+    if (!supabase) return [];
+    let data, error;
+    try {
+      const res = await supabase
+        .from('parceiros')
+        .select('*, projetos(nome)')
+        .order('created_at', { ascending: false });
+      data = res.data;
+      error = res.error;
+    } catch (e) {
+      error = e;
+    }
+
+    if (error) {
+      const resSimple = await supabase
+        .from('parceiros')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!resSimple.error) {
+        data = resSimple.data;
+        error = null;
+      }
+    }
+
+    if (error) throw error;
+    return (data || []).map(p => ({
+      ...p,
+      projeto: p.projetos?.nome || p.projeto || 'Sem projeto',
+      favorito: Boolean(p.favorito),
+    }));
+  },
+
+  async get(id) {
+    if (!supabase) return null;
+    const { data, error } = await supabase
+      .from('parceiros')
+      .select('*, projetos(nome)')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return {
+      ...data,
+      projeto: data.projetos?.nome || data.projeto || 'Sem projeto',
+      favorito: Boolean(data.favorito),
+    };
+  },
+
+  async create(dados) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const { data, error } = await supabase
+      .from('parceiros')
+      .insert([{
+        nome: dados.nome,
+        empresa_pf: dados.empresa_pf || dados.nome,
+        tipo_pessoa: dados.tipo_pessoa || 'PJ',
+        documento: dados.documento || dados.cnpj || dados.cpf || null,
+        tipo_parceria: dados.tipo_parceria || 'Empresa Mantenedora',
+        responsavel: dados.responsavel || null,
+        cargo_responsavel: dados.cargo_responsavel || null,
+        telefone: dados.telefone || null,
+        email: dados.email || null,
+        projeto: dados.projeto || null,
+        status: dados.status || 'Ativo',
+        contribuicao: dados.contribuicao || null,
+        favorito: Boolean(dados.favorito),
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id, dados) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const updatePayload = { ...dados };
+    delete updatePayload.id;
+    delete updatePayload.projetos;
+
+    const { data, error } = await supabase
+      .from('parceiros')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async delete(id) {
+    if (!supabase) throw new Error('Supabase não inicializado');
+    const { error } = await supabase
+      .from('parceiros')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return { success: true };
+  }
+};
+
+
 

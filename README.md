@@ -1,480 +1,160 @@
-# Sistema de Gestão de Fornecedores - Fundação CDL-BH (Backend Java)
+# Sistema de Gestão de Fornecedores e Parceiros
 
-Sistema completo para gestão de fornecedores e parceiros da Fundação CDL-BH, implementado com backend em Java Spring Boot e frontend em React.
+[![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.0-purple.svg)](https://vitejs.dev/)
+[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![Author](https://img.shields.io/badge/Author-Brayan%20Oliveira%20de%20Souza-informational.svg)](#-autoria-e-créditos-do-projeto)
 
----
-
-## 📋 Visão Geral
-
-Este sistema permite à Fundação CDL-BH gerenciar seus fornecedores e parceiros de forma eficiente, com:
-
-- **Cadastro de fornecedores** com informações detalhadas (contato, empresa, CNPJ, projetos, permissões)
-- **Gestão de usuários** com papéis (admin/user) e autenticação segura
-- **Auditoria completa** de todas as ações (logs de CREATE, UPDATE, DELETE)
-- **Backup automático** do banco de dados a cada hora
-- **Interface moderna** e responsiva construída com React e Tailwind CSS
-- **Integração WhatsApp** - botão direto para contato via WhatsApp na tabela de fornecedores
-- **Máscara automática** para CNPJ (00.000.000/0000-00) no formulário
-
-**Este sistema é usado em produção pela Fundação CDL-BH.**
+Sistema corporativo completo e resiliente para homologação, cadastro, auditoria e acompanhamento de contratos e fornecedores, concebido com backend robusto em **Java Spring Boot 3** e frontend reativo e responsivo em **React + Tailwind CSS + Vite**.
 
 ---
 
-## 🏗️ Arquitetura
+## 👨‍💻 Autoria e Créditos do Projeto
+
+- **Autor Principal e Arquiteto de Software:** **Brayan Oliveira de Souza**
+- **Organização Beneficiária / Parceira:** Fundação CDL-BH
+- **Ano de Desenvolvimento:** 2026
+- **Propriedade Intelectual & Direitos:** Registrado sob proteção autoral conforme a Lei nº 9.609/1998 (Lei do Software) e Lei nº 9.610/1998 (Direitos Autorais). Consulte [PATENTE_E_REGISTRO_INPI.md](PATENTE_E_REGISTRO_INPI.md) e [LICENSE](LICENSE).
+
+---
+
+## 📋 Visão Geral do Sistema
+
+O sistema foi arquitetado para simplificar e auditar rigorosamente o ciclo de vida de parceiros e fornecedores:
+
+- **Cadastro Centralizado de Fornecedores:** Dados cadastrais, empresa/PF, CNPJ validado e mascarado, e-mails, telefones com ação rápida de WhatsApp, permissões operacionais e vínculo a projetos sociais oficiais.
+- **Gestão Documental com Alertas de Validade:** Anexação de certidões, contratos e alvarás com monitoramento inteligente de vencimentos (vencidos e a vencer em 30 dias).
+- **Trilha de Auditoria Imutável (Compliance):** Registro automático de ações (`CREATE`, `UPDATE`, `DELETE`) contendo data/hora, identificação real do usuário autor da ação e detalhamento em formato estruturado (JSONB/Diff).
+- **Mecanismo de Backup Integrado:** Rotinas automatizadas de dump completo (FULL) e incremental via agendamento com controle rigoroso de caminho para prevenção de path traversal.
+- **Autenticação Stateless com JWT & Rate Limiting:** Proteção contra ataques de força bruta no endpoint de login via algoritmo *Token Bucket* (Bucket4j) e controle de permissões por perfil (`ROLE_ADMIN` e `ROLE_USER`).
+- **Flexibilidade Multibanco:** Suporte nativo para **H2 (em memória para testes instantâneos)**, **MySQL 8 (on-premise/servidor)** e **Supabase / PostgreSQL (nuvem/serverless)**.
+
+---
+
+## 🏗️ Arquitetura da Solução
 
 ```
-┌─────────────────┐         ┌──────────────────┐         ┌─────────────┐
-│   Frontend      │         │   Backend Java   │         │   MySQL     │
-│   (React)       │◄────────►│  (Spring Boot)   │◄────────►│  Database   │
-│   Porta 5173    │  HTTP   │   Porta 8080     │  JDBC   │   Porta 3306│
-└─────────────────┘         └──────────────────┘         └─────────────┘
+┌──────────────────────────┐             ┌────────────────────────────────┐             ┌─────────────────────────────┐
+│      Frontend SPA        │             │      Backend REST API          │             │     Banco de Dados          │
+│   (React 18 + Vite)      │◄───────────►│    (Java 21 + Spring Boot 3)   │◄───────────►│  • MySQL 8 (Produção)       │
+│   Porta 5173 / Netlify   │    HTTP     │    Porta 8080                  │    JDBC     │  • Supabase (PostgreSQL)    │
+│   Tailwind CSS + Radix   │  (REST/JWT) │    Spring Security + Bucket4j  │  (HikariCP) │  • H2 (Testes Locais)       │
+└──────────────────────────┘             └────────────────────────────────┘             └─────────────────────────────┘
 ```
 
-**Fluxo da aplicação:**
-1. **Frontend React** faz requisições HTTP para a API REST
-2. **Backend Spring Boot** processa as requisições, aplica regras de negócio e segurança
-3. **MySQL** armazena todos os dados de forma persistente
-4. **JWT** é usado para autenticação stateless (sem sessão no servidor)
+### Camadas do Backend (Clean MVC Architecture):
+1. **Controller Layer:** Validação de entradas HTTP, sanitização, controle de permissões via `@PreAuthorize` e orquestração de respostas REST.
+2. **Security & Filter Chain:** Interceptação por token Bearer JWT (`JwtAuthenticationFilter`), rate limiting contra brute force (`RateLimitConfig`) e políticas de cabeçalhos de segurança (prevenção contra MIME-sniffing e clickjacking).
+3. **Service Layer:** Regras de negócio, cálculo de diff de alterações para auditoria, coordenação de transações com rollback automático (`@Transactional`).
+4. **Repository Layer:** Abstração de persistência via Spring Data JPA e Hibernate, otimizado com índices e relacionamentos mapeados.
+5. **Entity & DTO Layer:** Separação estrita entre modelos relacionais do banco e contratos de transferência de dados da API.
 
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
-### Backend Java (Spring Boot)
-
-| Tecnologia | Descrição |
-|-----------|-----------|
-| **Spring Boot 3.2.0** | Framework que simplifica a configuração de aplicações Spring |
-| **Spring Data JPA** | Camada que converte objetos Java em registros de banco automaticamente, evitando escrever SQL repetitivo para operações simples de CRUD |
-| **Spring Security** | Framework de segurança que fornece autenticação e autorização, proteção contra CSRF, XSS, etc. |
-| **Spring MVC** | Framework web para criar APIs REST, gerencia requisições HTTP e respostas JSON |
-| **Hibernate** | Implementação JPA que mapeia classes Java para tabelas do banco de dados |
-| **MySQL Connector/J** | Driver JDBC oficial do MySQL para conectar Java ao banco |
-| **JWT (jjwt)** | Biblioteca para criar e validar tokens JSON Web Token para autenticação |
-| **Bucket4j** | Biblioteca para implementar rate limiting (limitação de taxa de requisições) |
-| **BCrypt** | Algoritmo de hash de senha seguro, usado para armazenar senhas de forma segura |
-| **Lombok** | Biblioteca que reduz código repetitivo via anotações (getters, setters, construtores) |
-| **Maven** | Ferramenta de gerenciamento de dependências e build do projeto Java |
-
-### Frontend React
-
-| Tecnologia | Descrição |
-|-----------|-----------|
-| **React 18** | Biblioteca JavaScript para construir interfaces de usuário baseadas em componentes |
-| **Vite** | Build tool rápido para desenvolvimento e bundling de aplicações React |
-| **Tailwind CSS** | Framework CSS utilitário para estilização rápida e responsiva |
-| **shadcn/ui** | Biblioteca de componentes UI reutilizáveis baseados em Radix UI |
-| **TanStack Query** | Biblioteca para gerenciamento de cache e sincronização de dados do servidor |
-| **React Router** | Biblioteca para roteamento em aplicações React single-page |
-| **Lucide React** | Biblioteca de ícones SVG modernos e customizáveis |
-
-### Banco de Dados
-
-| Tecnologia | Descrição |
-|-----------|-----------|
-| **MySQL 8** | Sistema de gerenciamento de banco de dados relacional |
-| **InnoDB** | Engine de armazenamento do MySQL que suporta transações e chaves estrangeiras |
-| **UTF8MB4** | Charset que suporta caracteres Unicode completos, incluindo emojis |
+| Camada | Tecnologia | Finalidade |
+|---|---|---|
+| **Linguagem Backend** | Java 21 LTS | Performance de compilação, tipagem estática e segurança de execução |
+| **Framework Web** | Spring Boot 3.2.0 | Inicialização rápida, injeção de dependência e ecossistema empresarial |
+| **Segurança** | Spring Security 6 & JJWT 0.12.3 | Autenticação stateless, criptografia BCrypt e RBAC |
+| **Proteção de Acesso** | Bucket4j 8.7.0 | Rate limiting preventivo contra força bruta no login |
+| **Persistência** | Spring Data JPA / Hibernate | Mapeamento objeto-relacional com suporte multiplataforma |
+| **Frontend** | React 18 & Vite 5 | Renderização ultrarrápida, SPA reativa e empacotamento otimizado |
+| **Estilização** | Tailwind CSS & shadcn/ui | Design system moderno, responsivo e com componentes acessíveis |
+| **Bancos Suportados** | MySQL 8 / PostgreSQL / H2 | Flexibilidade de infraestrutura e desenvolvimento |
 
 ---
 
-## 📁 Estrutura de Pastas do Backend Java
+## 🔒 Boas Práticas de Git: O que DEVE e NÃO DEVE Estar no Repositório
 
-```
-backend-java/
-├── src/main/java/br/org/cdlbh/fornecedores/
-│   ├── config/                  # Configurações do Spring
-│   │   ├── SecurityConfig.java          # Configuração de segurança (JWT, CORS, headers)
-│   │   ├── RateLimitConfig.java         # Configuração de rate limiting
-│   │   ├── ScheduledTasks.java          # Tarefas agendadas (backup automático)
-│   │   └── PermissaoParaConverter.java  # Conversor JSON para List<String>
-│   ├── controller/              # Controllers REST (endpoints da API)
-│   │   ├── AuthController.java           # Endpoints de autenticação (/api/auth)
-│   │   ├── FornecedorController.java     # Endpoints de fornecedores (/api/fornecedores)
-│   │   ├── BackupController.java         # Endpoints de backup (/api/backup)
-│   │   └── HealthController.java        # Health check (/api/health)
-│   ├── dto/                     # Data Transfer Objects (request/response)
-│   │   ├── LoginRequest.java            # DTO para requisição de login
-│   │   ├── LoginResponse.java           # DTO para resposta de login
-│   │   ├── UserResponse.java            # DTO para dados do usuário
-│   │   ├── FornecedorRequest.java       # DTO para requisição de fornecedor
-│   │   ├── FornecedorResponse.java      # DTO para resposta de fornecedor
-│   │   ├── ErrorResponse.java           # DTO para respostas de erro
-│   │   └── BackupInfo.java              # DTO para informações de backup
-│   ├── entity/                  # Entidades JPA (representam tabelas do banco)
-│   │   ├── Usuario.java                  # Entidade de usuários
-│   │   ├── Fornecedor.java              # Entidade de fornecedores
-│   │   ├── Projeto.java                 # Entidade de projetos
-│   │   └── Log.java                     # Entidade de logs de auditoria
-│   ├── repository/              # Repositórios Spring Data JPA (acesso a dados)
-│   │   ├── UsuarioRepository.java       # Repositório de usuários
-│   │   ├── FornecedorRepository.java     # Repositório de fornecedores
-│   │   ├── ProjetoRepository.java       # Repositório de projetos
-│   │   └── LogRepository.java           # Repositório de logs
-│   ├── service/                 # Camada de serviço (regras de negócio)
-│   │   ├── AuthService.java              # Serviço de autenticação
-│   │   ├── FornecedorService.java       # Serviço de fornecedores
-│   │   ├── LogService.java              # Serviço de auditoria
-│   │   └── BackupService.java           # Serviço de backup
-│   ├── security/                # Componentes de segurança
-│   │   ├── JwtProvider.java              # Geração e validação de tokens JWT
-│   │   └── JwtAuthenticationFilter.java # Filtro para autenticação via JWT
-│   ├── exception/               # Tratamento de exceções
-│   │   └── GlobalExceptionHandler.java  # Handler global de erros
-│   └── FornecedoresApplication.java    # Classe principal do Spring Boot
-├── src/main/resources/
-│   ├── application.properties            # Configurações do aplicativo (não commitar)
-│   └── application-example.properties   # Template de configurações (versionado)
-├── pom.xml                              # Configuração do Maven (dependências)
-└── .gitignore                           # Arquivos ignorados pelo Git
-```
+### ❌ NUNCA deve ser commitado no Git:
+- **Arquivos de backup e dumps de banco (`backups/*.sql`, `*.dump`):** Podem expor dados de empresas, contatos, dados de pessoas físicas e violar a LGPD (Lei Geral de Proteção de Dados).
+- **Variáveis de ambiente com chaves reais (`.env`, `.env.local`):** Chaves de API, credenciais do banco e chaves de assinatura JWT nunca devem ser versionadas.
+- **Configurações locais de IDEs (`.vscode/`, `.idea/`, `*.iml`):** Evita conflitos de configuração entre desenvolvedores.
+- **Diretórios de build e dependências (`target/`, `node_modules/`, `dist/`):** Aumentam o repositório desnecessariamente e devem ser gerados em tempo de compilação.
+- **Arquivos de log (`*.log`, `logs/`):** Podem conter stack traces sensíveis e informações de depuração.
 
-**Responsabilidades de cada camada:**
-
-- **Controller**: Recebe requisições HTTP, valida entrada, chama services, retorna respostas HTTP
-- **Service**: Contém regras de negócio, coordena múltiplos repositories, aplica validações complexas
-- **Repository**: Acesso a dados, queries no banco, abstração sobre JPA/Hibernate
-- **Entity**: Representação de tabelas do banco como classes Java
-- **DTO**: Objetos para transferência de dados entre camadas (não expõe entidades diretamente)
-
-**Diferença em relação ao Express/Node.js:**
-- No Express, as rotas fazem tudo junto (validação, lógica, acesso a dados)
-- Em Spring Boot, separamos em camadas para melhor organização, testabilidade e manutenção
+### ✅ O que DEVE estar no repositório:
+- **Código-fonte da aplicação (`src/`):** Classes Java, componentes React, estilos e testes.
+- **Arquivos de configuração de exemplo (`application-example.properties`, `.env.example`):** Modelos preenchidos apenas com valores fictícios/placeholders.
+- **Scripts DDL de banco de dados (`db-java/schema.sql`, `supabase/schema.sql`):** Apenas estrutura de tabelas, índices e triggers (sem dados sensíveis).
+- **Arquivos de manifesto de dependência (`pom.xml`, `package.json`, `package-lock.json`).
+- **Documentação do projeto (`README.md`, `LICENSE`, `PATENTE_E_REGISTRO_INPI.md`, guias).**
 
 ---
 
-## 🔌 Endpoints da API
-
-| Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
-| POST | `/api/auth/login` | ❌ | Login. Body: `{email, password}`. Resposta: `{access_token, user: {id, email, full_name, role}}` |
-| GET | `/api/auth/me` | ✅ | Retorna dados do usuário logado (payload do JWT) |
-| GET | `/api/health` | ❌ | Retorna `{"status":"ok"}` |
-| GET | `/api/fornecedores` | ✅ | Lista todos, ordenado por `created_at DESC` |
-| GET | `/api/fornecedores/:id` | ✅ | Detalhe de um fornecedor |
-| POST | `/api/fornecedores` | ✅ | Cria fornecedor. Body inclui `cnpj` (opcional, formato 00.000.000/0000-00) |
-| PUT | `/api/fornecedores/:id` | ✅ admin | Edita fornecedor. Inclui `cnpj` na atualização |
-| DELETE | `/api/fornecedores/:id` | ✅ admin | Exclui fornecedor |
-| POST | `/api/backup/generate` | ✅ admin | Gera dump `.sql` via `mysqldump` |
-| GET | `/api/backup/list` | ✅ admin | Lista backups existentes |
-| GET | `/api/backup/download/:filename` | ✅ admin | Baixa um arquivo de backup |
-
-**Legenda:**
-- ✅ = Requer autenticação (token JWT válido)
-- ❌ = Público (não requer autenticação)
-- admin = Apenas usuários com papel ADMIN
-
----
-
-## 🚀 Instalação e Execução Local
+## 🚀 Como Executar o Projeto
 
 ### Pré-requisitos
+- **Java JDK 21+** instalado e configurado no PATH
+- **Apache Maven 3.9+**
+- **Node.js 18+** e **npm**
+- **MySQL 8** (opcional, caso queira rodar o banco local persistido)
 
-- **Java 17+** instalado
-- **Maven 3.6+** instalado
-- **MySQL 8** instalado e rodando
-- **Node.js 18+** e **npm** instalados
+---
 
-### 1. Configurar o Banco de Dados
-
-```bash
-# Via linha de comando
-mysql -u root -p < db-java/schema.sql
-
-# Ou via MySQL Workbench: File > Run SQL Script > selecionar db-java/schema.sql
-```
-
-### 2. Configurar o Backend Java
+### Opção 1: Inicialização Expressa para Testes (H2 em Memória - Sem MySQL)
+Não requer nenhum banco instalado! Os dados de teste e usuários já são criados em memória automaticamente:
 
 ```bash
+# 1. Iniciar o Backend no perfil 'local'
 cd backend-java
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 
-# Instalar dependências
-mvn clean install
-
-# Configurar application.properties
-cd src/main/resources
-copy application-example.properties application.properties
-
-# Editar application.properties com suas configurações:
-# - spring.datasource.password: sua senha do MySQL
-# - jwt.secret: uma chave secreta forte
-# - cors.allowed-origins: URLs do frontend
-```
-
-### 3. Rodar o Backend
-
-```bash
-cd backend-java
-mvn spring-boot:run
-```
-
-O backend estará disponível em: http://localhost:8080
-
-### 4. Configurar o Frontend
-
-```bash
+# 2. Em outro terminal, iniciar o Frontend
 cd frontend
-
-# Instalar dependências
 npm install
-
-# Configurar .env
-# Editar .env e definir:
-VITE_API_URL=http://localhost:8080/api
-```
-
-### 5. Rodar o Frontend
-
-```bash
-cd frontend
 npm run dev
 ```
 
-O frontend estará disponível em: http://localhost:5173
+- **Acesso Web:** `http://localhost:5173`
+- **Console do H2:** `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:cdl_bh_fornecedores`)
+- **Usuários Padrão para Teste:**
+  - Admin: `admin@cdlbh.org.br` | Senha: `admin123`
+  - Usuário Comum: `user@cdlbh.org.br` | Senha: `user123`
 
 ---
 
-## 🔐 Credenciais de Teste
+### Opção 2: Produção Local com MySQL 8
 
-| Papel | E-mail | Senha |
-|-------|--------|-------|
-| Admin | admin@cdlbh.org.br | admin123 |
-| User | (criar via interface) | (definir ao criar) |
-
----
-
-## 🔒 Segurança Implementada
-
-### Autenticação e Autorização
-
-- **JWT (JSON Web Token)**: Tokens com expiração de 30 minutos
-- **BCrypt**: Hash de senhas com força 10
-- **Rate Limiting**: 5 tentativas de login em 15 minutos por IP
-- **Papéis**: ADMIN (acesso total) e USER (acesso limitado)
-
-### Proteções contra Ataques
-
-| Ataque | Proteção |
-|--------|----------|
-| SQL Injection | JPA/Hibernate (parametrized queries) |
-| XSS | Headers de segurança do Spring Security |
-| CSRF | Desabilitado (stateless JWT não precisa) |
-| Path Traversal | Validação de filename em download de backup |
-| Command Injection | ProcessBuilder com argumentos separados + sanitização |
-| Force Brute | Rate limiting no login |
-| Token Theft | Token apenas via header Authorization (não query param) |
-
-### Auditoria
-
-- **Logs de auditoria**: Todas as ações CREATE/UPDATE/DELETE são registradas
-- **Sanitização de dados sensíveis**: Email, telefone e observação NUNCA são gravados nos logs
-- **Diff de alterações**: Logs de UPDATE mostram apenas campos que mudaram
-
----
-
-## 📦 Backup Automático
-
-O sistema implementa uma política de backup híbrida (FULL + INCREMENTAL) para maximizar eficiência e segurança dos dados:
-
-### Política de Backup
-
-- **Backup FULL**: Todos os dias às 01:00 da manhã
-  - Gera um dump completo do banco via `mysqldump`
-  - Arquivo maior, demora mais para gerar
-  - Contém todos os dados do banco no momento do backup
-  - Cron: `0 0 1 * * *`
-
-- **Backup INCREMENTAL**: De 3 em 3 horas (08:00, 11:00, 14:00, 17:00, 20:00, 23:00)
-  - Gera apenas as mudanças desde o último backup via `mysqlbinlog`
-  - Arquivo pequeno, rápido para gerar
-  - Contém apenas as alterações (INSERT/UPDATE/DELETE/DDL) desde o último backup
-  - Cron: `0 0 8,11,14,17,20,23 * * *`
-
-### Diferença entre FULL e INCREMENTAL
-
-| Tipo | Descrição | Vantagens | Desvantagens |
-|------|-----------|-----------|--------------|
-| **FULL** | Dump completo do banco via mysqldump | Restauração simples e rápida | Arquivo grande, demora mais para gerar |
-| **INCREMENTAL** | Apenas mudanças via binary log (binlog) | Arquivo pequeno, rápido para gerar | Restauração requer aplicar FULL + incrementais em ordem |
-
-### Pré-requisitos: Binary Log (Binlog)
-
-Para que backups incrementais funcionem, o **binary log** deve estar habilitado no MySQL:
-
-**O que é o Binary Log?**
-- O binlog é um arquivo sequencial que registra todas as alterações no banco (INSERT/UPDATE/DELETE/DDL)
-- Cada evento no binlog tem uma posição única
-- Backups incrementais usam essas posições para saber "de onde" começar a capturar mudanças
-
-**Como habilitar no MySQL (Windows):**
-
-1. Abra o arquivo `my.ini` (geralmente em `C:\ProgramData\MySQL\MySQL Server 8.0\my.ini`)
-2. Adicione ou modifique as seguintes linhas na seção `[mysqld]`:
-
-```ini
-[mysqld]
-log-bin=mysql-bin
-server-id=1
-binlog_expire_logs_seconds=604800
-```
-
-3. Reinicie o serviço MySQL:
-```bash
-net stop MySQL80
-net start MySQL80
-```
-
-**Explicação das configurações:**
-- `log-bin=mysql-bin`: Habilita o binary log com prefixo "mysql-bin"
-- `server-id=1`: Identificador único do servidor (obrigatório para binlog)
-- `binlog_expire_logs_seconds=604800`: Mantém 7 dias de binlogs (604800 segundos), depois expira automaticamente
-
-### Como Funciona a Restauração
-
-Para restaurar o banco a um ponto específico:
-
-1. **Restaurar o último backup FULL**
+1. Crie o schema e tabelas no seu MySQL:
    ```bash
-   mysql -u root -p cdl_bh_fornecedores_java < backup_2024-01-15T01-00-00-000.sql
+   mysql -u root -p < db-java/schema.sql
+   ```
+2. Crie o arquivo `backend-java/src/main/resources/application.properties` a partir de `application-example.properties` com suas credenciais seguras.
+3. Inicie o backend:
+   ```bash
+   cd backend-java
+   mvn spring-boot:run
    ```
 
-2. **Aplicar os incrementais em ordem cronológica**
-   ```bash
-   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T08-00-00-000.sql
-   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T11-00-00-000.sql
-   mysql -u root -p cdl_bh_fornecedores_java < incremental_2024-01-15T14-00-00-000.sql
-   # ... e assim por diante até o ponto desejado
-   ```
+---
 
-**Importante:** Os incrementais devem ser aplicados **na ordem cronológica** correta, do mais antigo para o mais recente.
+## 🔌 Principais Endpoints da API REST
 
-### Metadados de Backup
-
-O sistema mantém uma tabela `backup_metadata` que rastreia cada backup executado:
-- `tipo`: FULL ou INCREMENTAL
-- `arquivo`: Nome do arquivo gerado
-- `binlog_file`: Nome do arquivo de binlog no momento do backup
-- `binlog_position`: Posição dentro do binlog (ponto de partida para o próximo incremental)
-- `executado_em`: Timestamp de quando o backup foi executado
-
-Esta tabela é essencial para que o sistema saiba de onde cada backup incremental deve começar.
-
-### Backup Manual
-
-Backups também podem ser gerados manualmente via API (endpoint `/api/backup/generate`), que gera um backup FULL sob demanda.
+| Método | Endpoint | Perfil Mínimo | Descrição |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | Público | Autenticação com rate limiting (retorna token Bearer JWT) |
+| `GET` | `/api/auth/me` | Autenticado | Dados do usuário logado |
+| `GET` | `/api/fornecedores` | Autenticado | Listagem completa de fornecedores e parceiros |
+| `GET` | `/api/fornecedores/{id}` | Autenticado | Detalhes de um fornecedor específico |
+| `POST` | `/api/fornecedores` | Autenticado | Cadastro de fornecedor (gera registro de auditoria) |
+| `PUT` | `/api/fornecedores/{id}` | `ADMIN` | Atualização cadastral com cálculo de diff |
+| `DELETE` | `/api/fornecedores/{id}` | `ADMIN` | Exclusão de fornecedor |
+| `GET` | `/api/documentos/vencendo` | Autenticado | Documentos próximos ao vencimento |
+| `POST` | `/api/documentos` | `ADMIN` | Anexação e metadados de novo documento |
+| `POST` | `/api/backup/generate` | `ADMIN` | Geração manual de dump do banco de dados |
+| `GET` | `/api/backup/download/{file}` | `ADMIN` | Download protegido contra path traversal |
+| `GET` | `/api/health` | Público | Verificação de disponibilidade da aplicação |
 
 ---
 
-## 🧪 Testes
+## ⚖️ Proteção Intelectual e Licença
 
-### Testar API Manualmente
+Este projeto é de autoria de **Brayan Oliveira de Souza** e possui proteção autoral e patrimonial estrita.
 
-```bash
-# Health check
-curl http://localhost:8080/api/health
-
-# Login
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@cdlbh.org.br","password":"admin123"}'
-
-# Listar fornecedores (substitua TOKEN pelo access_token)
-curl http://localhost:8080/api/fornecedores \
-  -H "Authorization: Bearer TOKEN"
-```
-
-### Testar Fluxo Completo
-
-1. Acesse http://localhost:5173
-2. Faça login com admin@cdlbh.org.br / admin123
-3. Liste fornecedores
-4. Crie um novo fornecedor (incluindo CNPJ com máscara automática)
-5. Edite o fornecedor
-6. Use o botão WhatsApp na tabela para contato direto
-7. Exclua o fornecedor
-8. Gere um backup
-9. Liste os backups
-10. Baixe um backup
-
----
-
-## 📚 Conceitos Importantes para Aprendizado
-
-### Injeção de Dependência (Dependency Injection)
-
-O Spring Boot usa Injeção de Dependência para gerenciar componentes:
-
-- **@Autowired**: Injeta automaticamente uma dependência
-- **@Component, @Service, @Repository**: Marcam classes como componentes Spring
-- **Benefício**: Não precisamos criar instâncias manualmente, o Spring faz isso
-
-Exemplo:
-```java
-@Service
-public class FornecedorService {
-    @Autowired
-    private FornecedorRepository repository; // Spring injeta automaticamente
-}
-```
-
-### Anotações do Spring
-
-| Anotação | Propósito |
-|----------|-----------|
-| `@Entity` | Marca classe como entidade JPA (tabela do banco) |
-| `@Repository` | Marca interface como repositório de dados |
-| `@Service` | Marca classe como serviço (regras de negócio) |
-| `@Controller` / `@RestController` | Marca classe como controller (endpoints HTTP) |
-| `@Autowired` | Injeta dependência automaticamente |
-| `@Value` | Injeta valor de propriedade do application.properties |
-| `@Transactional` | Marca método como transacional (rollback em erro) |
-| `@PreAuthorize` | Restringe acesso baseado em papel/role |
-| `@Scheduled` | Agenda execução de método em intervalos regulares |
-| `@Valid` | Valida DTO automaticamente |
-
-### Padrões de Projeto
-
-- **Repository Pattern**: Abstrai acesso a dados
-- **DTO Pattern**: Separa objetos de transferência de entidades
-- **Service Layer**: Isola regras de negócio
-- **Filter Chain**: Processa requisições em etapas (JWT filter, security filter, etc.)
-
----
-
-## ❓ Solução de Problemas
-
-### Backend não inicia
-
-- Verifique se o MySQL está rodando
-- Verifique se as credenciais no `application.properties` estão corretas
-- Verifique se o schema `cdl_bh_fornecedores_java` foi criado
-
-### Erro de CORS
-
-- Verifique `cors.allowed-origins` no `application.properties`
-- Verifique `VITE_API_URL` no `.env` do frontend
-
-### Backup automático não funciona
-
-- Verifique se `mysqldump` está no PATH
-- Configure o caminho completo em `mysql.mysqldump-path`
-- Verifique se o diretório `backups/` existe
-
-### Token expira constantemente
-
-- Aumente `jwt.expiration` no `application.properties` (valor em milissegundos)
-
-Para mais detalhes, consulte o [GUIA_DE_COMANDOS.md](GUIA_DE_COMANDOS.md).
-
----
-
-## 📄 Licença
-
-Este projeto é propriedade da Fundação CDL-BH.
-
----
-
-## 👥 Equipe
-
-Desenvolvido para a Fundação CDL-BH como parte do sistema de gestão de fornecedores.
+- **Licença:** Consulte o arquivo [LICENSE](LICENSE) para termos de titularidade e restrições.
+- **Processo de Registro no INPI:** Instruções completas para formalização de registro de software junto ao INPI disponíveis em [PATENTE_E_REGISTRO_INPI.md](PATENTE_E_REGISTRO_INPI.md).

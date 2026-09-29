@@ -59,8 +59,9 @@ public interface FornecedorRepository extends JpaRepository<Fornecedor, Long> {
      * @param termo Termo de busca
      * @return Lista de fornecedores que correspondem ao termo
      */
-    @Query(value = "SELECT * FROM fornecedores WHERE MATCH(nome, empresa_pf, palavra_chave) AGAINST(:termo IN NATURAL LANGUAGE MODE)", 
-           nativeQuery = true)
+    @Query("SELECT f FROM Fornecedor f WHERE LOWER(f.nome) LIKE LOWER(CONCAT('%', :termo, '%')) " +
+           "OR LOWER(f.empresaPf) LIKE LOWER(CONCAT('%', :termo, '%')) " +
+           "OR LOWER(f.palavraChave) LIKE LOWER(CONCAT('%', :termo, '%'))")
     List<Fornecedor> buscarPorTexto(@Param("termo") String termo);
 
     /**

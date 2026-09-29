@@ -8,6 +8,8 @@ import br.org.cdlbh.fornecedores.exception.CredenciaisInvalidasException;
 import br.org.cdlbh.fornecedores.exception.RecursoNaoEncontradoException;
 import br.org.cdlbh.fornecedores.repository.UsuarioRepository;
 import br.org.cdlbh.fornecedores.security.JwtProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,6 +29,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class AuthService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -58,27 +62,23 @@ public class AuthService {
      * logado com stack trace completo para investigação).
      */
     public LoginResponse login(LoginRequest request) {
-        // Log para debug
-        System.out.println("[AuthService] Tentativa de login para email: " + request.getEmail());
+        // Log seguro (sem PII) para debug
+        logger.debug("Tentativa de login recebida");
         
         // Busca o usuário pelo e-mail
         // Por segurança, NUNCA revelamos ao cliente se o problema foi o e-mail
         // não existir ou a senha estar errada — a mensagem é sempre genérica
         // ("Credenciais inválidas"), para evitar que alguém descubra, por tentativa
         // e erro, quais e-mails estão cadastrados no sistema (enumeração de usuários)
-        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+        Usuario usuario = usuarioRepository.findByEmail(request.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> {
-                    System.out.println("[AuthService] Usuário não encontrado: " + request.getEmail());
+                    logger.debug("Credenciais não corresponderam");
                     return new CredenciaisInvalidasException("Credenciais inválidas.");
                 });
 
-        System.out.println("[AuthService] Usuário encontrado: " + usuario.getEmail() + ", ID: " + usuario.getId());
+        logger.debug("Usuário localizado, verificando senha para userId={}", usuario.getId());
 
         // Verifica se a senha está correta
-        // passwordEncoder.matches(): Compara a senha em texto plano com o hash bcrypt
-        // - Retorna true se a senha corresponde ao hash
-        // - É seguro porque bcrypt é lento (dificulta força bruta) e usa salt
-        //   (o mesmo texto gera hashes diferentes a cada vez que é gerado)
         if (!passwordEncoder.matches(request.getPassword(), usuario.getSenhaHash())) {
             throw new CredenciaisInvalidasException("Credenciais inválidas.");
         }
@@ -91,7 +91,7 @@ public class AuthService {
                 usuario.getRole().name()
         );
 
-        System.out.println("[AuthService] Token JWT gerado com sucesso");
+        logger.debug("Login bem-sucedido para userId={}", usuario.getId());
 
         // Cria a resposta com o token e dados do usuário
         LoginResponse response = new LoginResponse();

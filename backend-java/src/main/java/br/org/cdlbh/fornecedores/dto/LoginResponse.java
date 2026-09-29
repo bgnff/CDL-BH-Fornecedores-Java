@@ -22,6 +22,13 @@ public class LoginResponse {
     private String access_token;
 
     /**
+     * Retorna o token para compatibilidade com clientes que esperam 'token'
+     */
+    public String getToken() {
+        return access_token;
+    }
+
+    /**
      * Dados do usuário logado
      */
     private UserResponse user;

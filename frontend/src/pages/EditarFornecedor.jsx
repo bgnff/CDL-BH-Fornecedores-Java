@@ -22,7 +22,8 @@ export default function EditarFornecedor() {
     onError: () => toast.error('Erro ao atualizar.'),
   });
 
-  if (user?.role !== 'admin') return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 text-center"><p className="text-muted-foreground">Sem permissão.</p><Button variant="outline" className="mt-4" onClick={() => navigate('/fornecedores')}>Voltar</Button></div>;
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  if (!isAdmin) return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 text-center"><p className="text-muted-foreground">Sem permissão de administrador para editar este fornecedor.</p><Button variant="outline" className="mt-4" onClick={() => navigate('/fornecedores')}>Voltar</Button></div>;
   if (isLoading) return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96 w-full" /></div>;
 
   return (

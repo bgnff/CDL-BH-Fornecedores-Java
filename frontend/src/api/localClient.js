@@ -5,6 +5,9 @@ import {
   supabaseDocumentos,
   supabaseProjetos,
   supabaseLogs,
+  supabaseBeneficiarios,
+  supabasePrestadores,
+  supabaseParceiros,
   uploadDocumentoStorage 
 } from './supabaseClient';
 
@@ -15,17 +18,30 @@ import {
   mockProjetos,
   mockLogs,
   mockBackup,
+  mockBeneficiarios,
+  mockPrestadores,
+  mockParceiros,
   resetMockData 
 } from './mockClient';
 
-const isBrowserLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+export const isBrowserLocalhost = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname === '[::1]' ||
+  window.location.hostname.startsWith('192.168.') ||
+  window.location.hostname.startsWith('10.') ||
+  window.location.hostname.startsWith('172.') ||
+  window.location.hostname.endsWith('.local')
+);
 const BASE_URL = import.meta.env.VITE_API_URL || (isBrowserLocalhost ? 'http://localhost:8080/api' : '/api');
 
 export function isMockMode() {
+  if (!isBrowserLocalhost) return false;
   return localStorage.getItem('cdlbh_mock_mode') === 'true' || import.meta.env.VITE_USE_MOCK === 'true';
 }
 
 export function activateMockMode() {
+  if (!isBrowserLocalhost) return;
   localStorage.setItem('cdlbh_mock_mode', 'true');
 }
 
@@ -47,20 +63,39 @@ async function request(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   
-  const res = await fetch(`${BASE_URL}${path}`, { 
-    method, 
-    headers, 
-    body: body ? JSON.stringify(body) : undefined 
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { 
+      method, 
+      headers, 
+      body: body ? JSON.stringify(body) : undefined 
+    });
+  } catch (netErr) {
+    throw new Error('Falha de conexão com o servidor. Verifique se o backend está ativo.');
+  }
 
   if (res.status === 401) { 
     removeToken(); 
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || data.message || 'Não autorizado');
+    throw new Error(data.error || data.message || 'Sessão expirada ou credenciais inválidas.');
   }
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || data.message || 'Erro na requisição');
+  if (res.status === 204) {
+    return { success: true };
+  }
+
+  const contentType = res.headers.get('content-type') || '';
+  let data;
+  if (contentType.includes('application/json')) {
+    data = await res.json().catch(() => ({}));
+  } else {
+    const text = await res.text().catch(() => '');
+    data = { message: text };
+  }
+
+  if (!res.ok) {
+    throw new Error(data.error || data.message || `Erro na requisição (código ${res.status})`);
+  }
   return data;
 }
 
@@ -73,7 +108,12 @@ export const auth = {
       return supabaseAuth.login(email, password);
     }
     const data = await request('POST', '/auth/login', { email, password });
-    setToken(data.access_token);
+    const token = data.access_token || data.token;
+    if (token) {
+      setToken(token);
+      data.access_token = token;
+      data.token = token;
+    }
     if (data.user) {
       localStorage.setItem('cdlbh_user', JSON.stringify(data.user));
     }
@@ -270,5 +310,191 @@ export const logsAPI = {
     if (isMockMode()) return mockLogs.list();
     if (isSupabaseConfigured()) return supabaseLogs.list();
     return request('GET', '/logs');
+  },
+};
+
+export const beneficiariosAPI = {
+  async list() {
+    if (isMockMode()) return mockBeneficiarios.list();
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseBeneficiarios.list();
+      } catch (err) {
+        console.warn('Beneficiários: tabela não encontrada ou erro no Supabase. Usando dados locais como fallback:', err);
+        return mockBeneficiarios.list();
+      }
+    }
+    return mockBeneficiarios.list();
+  },
+  async get(id) {
+    if (isMockMode()) return mockBeneficiarios.get(id);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseBeneficiarios.get(id);
+      } catch (err) {
+        return mockBeneficiarios.get(id);
+      }
+    }
+    return mockBeneficiarios.get(id);
+  },
+  async create(data) {
+    if (isMockMode()) return mockBeneficiarios.create(data);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseBeneficiarios.create(data);
+      } catch (err) {
+        console.warn('Erro ao salvar beneficiário no Supabase, salvando localmente:', err);
+        return mockBeneficiarios.create(data);
+      }
+    }
+    return mockBeneficiarios.create(data);
+  },
+  async update(id, data) {
+    if (isMockMode()) return mockBeneficiarios.update(id, data);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseBeneficiarios.update(id, data);
+      } catch (err) {
+        console.warn('Erro ao atualizar beneficiário no Supabase, atualizando localmente:', err);
+        return mockBeneficiarios.update(id, data);
+      }
+    }
+    return mockBeneficiarios.update(id, data);
+  },
+  async delete(id) {
+    if (isMockMode()) return mockBeneficiarios.delete(id);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseBeneficiarios.delete(id);
+      } catch (err) {
+        console.warn('Erro ao excluir beneficiário no Supabase, excluindo localmente:', err);
+        return mockBeneficiarios.delete(id);
+      }
+    }
+    return mockBeneficiarios.delete(id);
+  },
+};
+
+export const prestadoresAPI = {
+  async list() {
+    if (isMockMode()) return mockPrestadores.list();
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabasePrestadores.list();
+      } catch (err) {
+        console.warn('Prestadores: fallback para mock:', err);
+        return mockPrestadores.list();
+      }
+    }
+    return mockPrestadores.list();
+  },
+  async get(id) {
+    if (isMockMode()) return mockPrestadores.get(id);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabasePrestadores.get(id);
+      } catch (err) {
+        return mockPrestadores.get(id);
+      }
+    }
+    return mockPrestadores.get(id);
+  },
+  async create(data) {
+    if (isMockMode()) return mockPrestadores.create(data);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabasePrestadores.create(data);
+      } catch (err) {
+        console.warn('Erro ao salvar prestador no Supabase, salvando localmente:', err);
+        return mockPrestadores.create(data);
+      }
+    }
+    return mockPrestadores.create(data);
+  },
+  async update(id, data) {
+    if (isMockMode()) return mockPrestadores.update(id, data);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabasePrestadores.update(id, data);
+      } catch (err) {
+        console.warn('Erro ao atualizar prestador no Supabase, atualizando localmente:', err);
+        return mockPrestadores.update(id, data);
+      }
+    }
+    return mockPrestadores.update(id, data);
+  },
+  async delete(id) {
+    if (isMockMode()) return mockPrestadores.delete(id);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabasePrestadores.delete(id);
+      } catch (err) {
+        console.warn('Erro ao excluir prestador no Supabase, excluindo localmente:', err);
+        return mockPrestadores.delete(id);
+      }
+    }
+    return mockPrestadores.delete(id);
+  },
+};
+
+export const parceirosAPI = {
+  async list() {
+    if (isMockMode()) return mockParceiros.list();
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseParceiros.list();
+      } catch (err) {
+        console.warn('Parceiros: fallback para mock:', err);
+        return mockParceiros.list();
+      }
+    }
+    return mockParceiros.list();
+  },
+  async get(id) {
+    if (isMockMode()) return mockParceiros.get(id);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseParceiros.get(id);
+      } catch (err) {
+        return mockParceiros.get(id);
+      }
+    }
+    return mockParceiros.get(id);
+  },
+  async create(data) {
+    if (isMockMode()) return mockParceiros.create(data);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseParceiros.create(data);
+      } catch (err) {
+        console.warn('Erro ao salvar parceiro no Supabase, salvando localmente:', err);
+        return mockParceiros.create(data);
+      }
+    }
+    return mockParceiros.create(data);
+  },
+  async update(id, data) {
+    if (isMockMode()) return mockParceiros.update(id, data);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseParceiros.update(id, data);
+      } catch (err) {
+        console.warn('Erro ao atualizar parceiro no Supabase, atualizando localmente:', err);
+        return mockParceiros.update(id, data);
+      }
+    }
+    return mockParceiros.update(id, data);
+  },
+  async delete(id) {
+    if (isMockMode()) return mockParceiros.delete(id);
+    if (isSupabaseConfigured()) {
+      try {
+        return await supabaseParceiros.delete(id);
+      } catch (err) {
+        console.warn('Erro ao excluir parceiro no Supabase, excluindo localmente:', err);
+        return mockParceiros.delete(id);
+      }
+    }
+    return mockParceiros.delete(id);
   },
 };

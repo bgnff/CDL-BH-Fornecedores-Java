@@ -93,6 +93,7 @@ function getTableLabel(tabela) {
 
 export default function Auditoria() {
   const { user } = useAuth();
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
   const [search, setSearch] = useState('');
   const [acaoFilter, setAcaoFilter] = useState('ALL');
   const [tabelaFilter, setTabelaFilter] = useState('ALL');
@@ -101,11 +102,31 @@ export default function Auditoria() {
   const { data: logs = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ['logs'],
     queryFn: () => logsAPI.list(),
+    enabled: isAdmin,
   });
 
   const toggleRow = (id) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <div className="p-8 bg-card rounded-2xl border border-border shadow-sm flex flex-col items-center">
+          <div className="h-16 w-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+            <ShieldAlert className="h-8 w-8" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">Acesso Restrito</h2>
+          <p className="text-muted-foreground text-sm max-w-md">
+            Você não possui permissão para visualizar a trilha de auditoria e logs do sistema. Esta funcionalidade é exclusiva para Administradores.
+          </p>
+          <Button asChild className="mt-6" variant="default">
+            <a href="/">Voltar ao Início</a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const filteredLogs = logs.filter(log => {
     const q = search.trim().toLowerCase();

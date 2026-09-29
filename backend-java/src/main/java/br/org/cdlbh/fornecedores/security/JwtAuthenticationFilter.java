@@ -72,23 +72,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     // Token válido - extrai as informações do usuário
                     Long userId = jwtProvider.getUserIdFromToken(token);
                     String role = jwtProvider.getRoleFromToken(token);
+                    String fullName = jwtProvider.getFullNameFromToken(token);
 
                     // Cria um objeto de autenticação do Spring Security
-                    // UsernamePasswordAuthenticationToken: Representa um usuário autenticado
-                    // - Primeiro parâmetro: principal (identificação do usuário - usamos o ID)
-                    // - Segundo parâmetro: credentials (não usamos pois é JWT)
-                    // - Terceiro parâmetro: authorities (permissões/roles do usuário)
+                    // - Primeiro parâmetro: principal (ID do usuário)
+                    // - Segundo parâmetro: credentials (nome completo para auditoria)
+                    String safeRole = (role != null && !role.isBlank()) ? role.trim() : "USER";
+
                     List<SimpleGrantedAuthority> authorities = List.of(
-                            new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()),
-                            new SimpleGrantedAuthority("ROLE_" + role.toLowerCase()),
-                            new SimpleGrantedAuthority(role.toUpperCase()),
-                            new SimpleGrantedAuthority(role.toLowerCase())
+                            new SimpleGrantedAuthority("ROLE_" + safeRole.toUpperCase()),
+                            new SimpleGrantedAuthority("ROLE_" + safeRole.toLowerCase()),
+                            new SimpleGrantedAuthority(safeRole.toUpperCase()),
+                            new SimpleGrantedAuthority(safeRole.toLowerCase())
                     );
 
                     UsernamePasswordAuthenticationToken authentication = 
                             new UsernamePasswordAuthenticationToken(
                                     userId, 
-                                    null, 
+                                    fullName != null ? fullName : ("Usuário " + userId), 
                                     authorities
                             );
 

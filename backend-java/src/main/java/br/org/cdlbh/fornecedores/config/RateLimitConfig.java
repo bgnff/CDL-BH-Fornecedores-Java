@@ -39,8 +39,10 @@ public class RateLimitConfig {
     @Autowired(required = false)
     private ProxyManager<String> proxyManager;
 
+    private final java.util.concurrent.ConcurrentHashMap<String, Bucket> localBuckets = new java.util.concurrent.ConcurrentHashMap<>();
+
     /**
-     * Cria um bucket de rate limiting para um IP específico
+     * Cria ou recupera o bucket de rate limiting para um IP específico
      * 
      * @param request Requisição HTTP (para extrair o IP)
      * @return Bucket configurado com limites de taxa
@@ -53,8 +55,8 @@ public class RateLimitConfig {
             Supplier<BucketConfiguration> configSupplier = getConfigSupplierForUser();
             return proxyManager.builder().build(key, configSupplier);
         } else {
-            // Modo local (memória) - para desenvolvimento
-            return createLocalBucket();
+            // Modo local (memória) - armazena bucket associado ao IP
+            return localBuckets.computeIfAbsent(key, k -> createLocalBucket());
         }
     }
 
@@ -67,8 +69,8 @@ public class RateLimitConfig {
      */
     private Bucket createLocalBucket() {
         Bandwidth limit = Bandwidth.builder()
-                .capacity(5) // 5 tentativas
-                .refillIntervally(1, Duration.ofMinutes(3)) // 1 token a cada 3 minutos
+                .capacity(60) // 60 tentativas para testes locais
+                .refillGreedy(60, Duration.ofMinutes(1)) // recarrega rapidamente no ambiente local
                 .build();
         
         return Bucket.builder()
@@ -97,15 +99,10 @@ public class RateLimitConfig {
      * @return String com o IP (ou "unknown" se não for possível determinar)
      */
     private String getIpKey(HttpServletRequest request) {
+        // Usa getRemoteAddr() diretamente. Quando atrás de um proxy confiável (Netlify, Cloudflare, nginx),
+        // configure server.forward-headers-strategy=NATIVE no application.properties
+        // para que o Spring resolva o IP real de forma segura.
         String ip = request.getRemoteAddr();
-        
-        // Verifica headers de proxy (caso esteja atrás de load balancer)
-        // X-Forwarded-For: Header com o IP original quando há proxy
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            ip = xForwardedFor.split(",")[0].trim();
-        }
-        
-        return ip != null ? ip : "unknown";
+        return (ip != null && !ip.isBlank()) ? ip : "unknown";
     }
 }

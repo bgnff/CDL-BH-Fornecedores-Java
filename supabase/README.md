@@ -40,3 +40,32 @@ Para conferir:
    - **Project URL** (ex: `https://xyzcompany.supabase.co`) -> Esta é a variável `VITE_SUPABASE_URL`
    - **Project API keys: `anon` / `public`** -> Esta é a variável `VITE_SUPABASE_ANON_KEY`
 3. Configure estas variáveis no arquivo `.env` do frontend ou no painel de Environment Variables da **Netlify**.
+
+---
+
+## 5. Tabela de Beneficiários (Migration)
+
+Para habilitar o módulo de Beneficiários:
+1. No **SQL Editor** do Supabase, crie uma **+ New Query**.
+2. Abra o arquivo [`supabase/migration_beneficiarios.sql`](migration_beneficiarios.sql), copie todo o conteúdo e cole no editor.
+3. Clique em **Run**.
+
+---
+
+## 6. Favoritos e Tipo de Pessoa PJ/PF (Migration)
+
+Para habilitar a favoritação de fornecedores/beneficiários e o tipo de pessoa (PJ/PF):
+1. No **SQL Editor** do Supabase, crie uma **+ New Query**.
+2. Abra o arquivo [`supabase/migration_favoritos_e_tipo_pessoa.sql`](migration_favoritos_e_tipo_pessoa.sql), copie todo o conteúdo e cole no editor.
+3. Clique em **Run**.
+
+---
+
+## 7. Prestadores e Parceiros (Migration)
+
+Para habilitar as seções de Prestadores de Serviços e Parceiros Institucionais:
+1. No **SQL Editor** do Supabase, crie uma **+ New Query**.
+2. Abra o arquivo [`supabase/migration_prestadores_e_parceiros.sql`](migration_prestadores_e_parceiros.sql), copie todo o conteúdo e cole no editor.
+3. Clique em **Run**.
+
+

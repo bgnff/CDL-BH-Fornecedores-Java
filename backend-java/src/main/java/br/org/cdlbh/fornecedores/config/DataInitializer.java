@@ -18,7 +18,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Inicializa dados automáticos no banco em memória H2 quando o perfil 'local' estiver ativo.
+ * Inicializa dados automáticos no banco em memória H2 quando o perfil 'local'
+ * estiver ativo.
  */
 @Component
 @Profile("local")
@@ -45,33 +46,44 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("🚀 [MODO TESTE LOCAL] Inicializando dados no banco H2...");
         System.out.println("============================================================");
 
-        // 1. Criar Usuários padrão
-        if (usuarioRepository.count() == 0) {
+        // 1. Criar Usuários padrão (verifica cada um individualmente)
+        if (usuarioRepository.findByEmail("admin@cdlbh.org.br").isEmpty()) {
             Usuario admin = new Usuario();
             admin.setNome("Administrador CDL BH");
             admin.setEmail("admin@cdlbh.org.br");
             admin.setSenhaHash(passwordEncoder.encode("admin123"));
             admin.setRole(Usuario.Role.admin);
             usuarioRepository.save(admin);
+            System.out.println("✅ Usuário local admin@cdlbh.org.br cadastrado.");
+        }
 
+        if (usuarioRepository.findByEmail("user@cdlbh.org.br").isEmpty()) {
             Usuario user = new Usuario();
             user.setNome("Colaborador CDL BH");
             user.setEmail("user@cdlbh.org.br");
             user.setSenhaHash(passwordEncoder.encode("user123"));
             user.setRole(Usuario.Role.user);
             usuarioRepository.save(user);
+            System.out.println("✅ Usuário local user@cdlbh.org.br cadastrado.");
+        }
 
-            System.out.println("✅ Usuários criados: admin@cdlbh.org.br / admin123 | user@cdlbh.org.br / user123");
+        if (usuarioRepository.findByEmail("contatobgnx@gmail.com").isEmpty()) {
+            Usuario brayan = new Usuario();
+            brayan.setNome("Brayan Oliveira");
+            brayan.setEmail("contatobgnx@gmail.com");
+            brayan.setSenhaHash(passwordEncoder.encode("admin123"));
+            brayan.setRole(Usuario.Role.admin);
+            usuarioRepository.save(brayan);
+            System.out.println("✅ Usuário administrador contatobgnx@gmail.com cadastrado (senha: admin123).");
         }
 
         // 2. Criar Projetos
         if (projetoRepository.count() == 0) {
             List<String> projetos = List.of(
-                "Projeto Afeto", "Afeto Empreendedorismo", "Alimentando Vidas",
-                "Brincadeira é Coisa Séria", "Brinquedoteca Itinerante", "Despertar Empreendedor",
-                "Liderança Jovem", "Natal de Todo Mundo", "Programa Educação e Trabalho (PET)",
-                "Protagonizar en Cena", "Sorridente", "Ver é Bom Demais", "Outro"
-            );
+                    "Projeto Afeto", "Afeto Empreendedorismo", "Alimentando Vidas",
+                    "Brincadeira é Coisa Séria", "Brinquedoteca Itinerante", "Despertar Empreendedor",
+                    "Liderança Jovem", "Natal de Todo Mundo", "Programa Educação e Trabalho (PET)",
+                    "Protagonizar en Cena", "Sorridente", "Ver é Bom Demais", "Outro");
 
             for (String nomeProj : projetos) {
                 Projeto p = new Projeto();

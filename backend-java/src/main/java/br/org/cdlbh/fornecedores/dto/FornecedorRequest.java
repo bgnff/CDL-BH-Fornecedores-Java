@@ -30,15 +30,24 @@ public class FornecedorRequest {
     /**
      * Nome da empresa/PF
      */
-    @NotBlank(message = "Empresa/PF é obrigatório")
-    @Size(min = 2, max = 200, message = "Empresa/PF deve ter entre 2 e 200 caracteres")
+    @Size(max = 200, message = "Empresa/PF deve ter no máximo 200 caracteres")
     private String empresa_pf;
 
     /**
-     * CNPJ (opcional)
-     * Formato esperado: 00.000.000/0000-00
+     * Tipo de pessoa (PJ ou PF)
      */
-    @Pattern(regexp = "^$|^\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}$|^\\d{14}$", message = "CNPJ deve estar no formato 00.000.000/0000-00")
+    private String tipo_pessoa;
+
+    /**
+     * Indica se o fornecedor é favorito
+     */
+    private Boolean favorito;
+
+    /**
+     * CNPJ ou CPF (opcional)
+     * Formato esperado: 00.000.000/0000-00 ou 000.000.000-00
+     */
+    @Pattern(regexp = "^$|^\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}$|^\\d{14}$|^\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}$|^\\d{11}$", message = "Documento deve ser um CNPJ ou CPF válido")
     private String cnpj;
 
     /**

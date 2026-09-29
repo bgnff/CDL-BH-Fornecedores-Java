@@ -4,7 +4,7 @@ import { projetosAPI } from '@/api/localClient';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, X, RotateCcw } from 'lucide-react';
+import { Search, Filter, X, RotateCcw, Star } from 'lucide-react';
 
 const PROJETOS_FALLBACK = [
   'Projeto Afeto',
@@ -22,7 +22,14 @@ const PROJETOS_FALLBACK = [
   'Outro'
 ];
 
-export default function FornecedorFilters({ search, onSearchChange, projeto, onProjetoChange }) {
+export default function FornecedorFilters({ 
+  search, 
+  onSearchChange, 
+  projeto, 
+  onProjetoChange,
+  apenasFavoritos,
+  onApenasFavoritosChange
+}) {
   const { data: projetosData = [] } = useQuery({
     queryKey: ['projetos'],
     queryFn: () => projetosAPI.list(),
@@ -32,11 +39,12 @@ export default function FornecedorFilters({ search, onSearchChange, projeto, onP
     ? projetosData.map((p) => p.nome)
     : PROJETOS_FALLBACK;
 
-  const hasActiveFilters = search.trim() !== '' || (projeto && projeto !== 'all');
+  const hasActiveFilters = search.trim() !== '' || (projeto && projeto !== 'all') || apenasFavoritos;
 
   const handleClearFilters = () => {
     onSearchChange('');
     onProjetoChange('all');
+    if (onApenasFavoritosChange) onApenasFavoritosChange(false);
   };
 
   return (
@@ -80,13 +88,32 @@ export default function FornecedorFilters({ search, onSearchChange, projeto, onP
         </Select>
       </div>
 
+      {/* Botão Filtro Apenas Favoritos */}
+      {onApenasFavoritosChange && (
+        <Button
+          type="button"
+          variant={apenasFavoritos ? "default" : "outline"}
+          size="sm"
+          onClick={() => onApenasFavoritosChange(!apenasFavoritos)}
+          className={`h-10 text-xs gap-1.5 shrink-0 transition-all cursor-pointer ${
+            apenasFavoritos
+              ? "bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-xs"
+              : "text-muted-foreground hover:text-amber-500 hover:border-amber-300"
+          }`}
+          title={apenasFavoritos ? "Mostrando apenas favoritos" : "Filtrar apenas favoritos"}
+        >
+          <Star className={`h-3.5 w-3.5 ${apenasFavoritos ? "fill-white text-white" : "text-amber-400"}`} />
+          <span>Favoritos</span>
+        </Button>
+      )}
+
       {/* Botão Limpar Filtros */}
       {hasActiveFilters && (
         <Button
           variant="outline"
           size="sm"
           onClick={handleClearFilters}
-          className="h-10 text-xs gap-1.5 shrink-0 text-muted-foreground hover:text-foreground"
+          className="h-10 text-xs gap-1.5 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
           title="Restaurar todos os filtros"
         >
           <RotateCcw className="h-3.5 w-3.5" />

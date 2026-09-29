@@ -1,22 +1,61 @@
-# Environment variables
+# ============================================================
+# .gitignore - Sistema de Gestão de Fornecedores
+# Autor: Brayan Oliveira de Souza <contatobgnx@gmail.com>
+# ============================================================
+
+# Environment variables & secrets
 .env
 .env.local
 .env.*.local
 frontend/.env
 frontend/.env.local
 backend-java/.env
+backend-java/src/main/resources/application.properties
+backend-java/src/main/resources/application-supabase.properties
+senhas_importantes.txt
+
+# Database dumps and local backups (NÃO commitar dados de produção ou testes)
+backups/
+*.sql.gz
+*.sql.bak
+*.dump
 
 # Dependencies
 node_modules/
 backend-java/target/
+.mvn/wrapper/maven-wrapper.jar
 
 # Build output
 frontend/dist/
 frontend/build/
+dist/
+build/
+out/
+bin/
 
-# OS and IDE files
-.DS_Store
-Thumbs.db
+# IDEs & Editors
 .vscode/
 .idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.nb-gradle/
+nbproject/
+
+# Logs & temporary files
 *.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

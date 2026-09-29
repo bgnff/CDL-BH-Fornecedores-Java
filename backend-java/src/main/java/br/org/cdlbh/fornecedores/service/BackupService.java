@@ -101,16 +101,18 @@ public class BackupService {
             String sanitizedName = sanitizarString(dbName);
 
             // Executa o mysqldump usando ProcessBuilder
-            // ProcessBuilder é mais seguro que Runtime.exec() porque separa argumentos
-            // Isso previne command injection pois não concatenamos strings
+            // A senha é passada via variável de ambiente MYSQL_PWD para não vazar na lista de processos do SO (ps/Process Explorer)
             ProcessBuilder processBuilder = new ProcessBuilder(
                     mysqldumpPath,
                     "-h", sanitizedHost,
                     "-P", sanitizedPort,
                     "-u", sanitizedUser,
-                    "-p" + dbPassword, // Senha via argumento (alternativa: variável de ambiente MYSQL_PWD)
                     sanitizedName
             );
+
+            if (dbPassword != null && !dbPassword.isEmpty()) {
+                processBuilder.environment().put("MYSQL_PWD", dbPassword);
+            }
 
             // Redireciona a saída para o arquivo
             processBuilder.redirectOutput(filepath.toFile());
@@ -454,13 +456,11 @@ public class BackupService {
      * @return true se válido, false caso contrário
      */
     private boolean isValidFilename(String filename) {
+        if (filename == null || filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
+            return false;
+        }
         // Regex que valida o formato do nome do arquivo (aceita FULL e INCREMENTAL)
-        // ^(backup_|incremental_): começa com "backup_" ou "incremental_"
-        // \\d{4}-\\d{2}-\\d{2}: data no formato YYYY-MM-DD
-        // T: separador
-        // \\d{2}-\\d{2}-\\d{2}-\\d{3}: hora no formato HH-MM-SS-SSS
-        // \\.sql$: termina com ".sql"
-        Pattern pattern = Pattern.compile("^(backup_|incremental_)\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}-\\d{3}Z\\.sql$");
+        Pattern pattern = Pattern.compile("^(backup_|incremental_)\\d{4}-\\d{2}-\\d{2}T\\d{2}-\\d{2}-\\d{2}(-\\d+)?(Z)?\\.sql$");
         return pattern.matcher(filename).matches();
     }
 

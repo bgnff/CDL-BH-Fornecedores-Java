@@ -1,10 +1,20 @@
-import { FORNECEDORES_INICIAIS, DOCUMENTOS_INICIAIS, PROJETOS_INICIAIS } from './mockData';
+import { 
+  FORNECEDORES_INICIAIS, 
+  DOCUMENTOS_INICIAIS, 
+  PROJETOS_INICIAIS, 
+  BENEFICIARIOS_INICIAIS,
+  PRESTADORES_INICIAIS,
+  PARCEIROS_INICIAIS
+} from './mockData';
 
 const KEY_FORNECEDORES = 'cdlbh_mock_fornecedores';
 const KEY_DOCUMENTOS = 'cdlbh_mock_documentos';
 const KEY_BACKUPS = 'cdlbh_mock_backups';
 const KEY_PROJETOS = 'cdlbh_mock_projetos';
 const KEY_LOGS = 'cdlbh_mock_logs';
+const KEY_BENEFICIARIOS = 'cdlbh_mock_beneficiarios';
+const KEY_PRESTADORES = 'cdlbh_mock_prestadores';
+const KEY_PARCEIROS = 'cdlbh_mock_parceiros';
 
 const LOGS_INICIAIS = [
   {
@@ -63,9 +73,14 @@ function setStorage(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+const delay = (ms = 50) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export function resetMockData() {
   localStorage.setItem(KEY_PROJETOS, JSON.stringify(PROJETOS_INICIAIS));
   localStorage.setItem(KEY_FORNECEDORES, JSON.stringify(FORNECEDORES_INICIAIS));
+  localStorage.setItem(KEY_BENEFICIARIOS, JSON.stringify(BENEFICIARIOS_INICIAIS));
+  localStorage.setItem(KEY_PRESTADORES, JSON.stringify(PRESTADORES_INICIAIS));
+  localStorage.setItem(KEY_PARCEIROS, JSON.stringify(PARCEIROS_INICIAIS));
   localStorage.setItem(KEY_DOCUMENTOS, JSON.stringify(DOCUMENTOS_INICIAIS));
   localStorage.setItem(KEY_LOGS, JSON.stringify(LOGS_INICIAIS));
   localStorage.setItem(KEY_BACKUPS, JSON.stringify([
@@ -398,4 +413,182 @@ export const mockLogs = {
     return newLog;
   }
 };
+
+export const mockBeneficiarios = {
+  async list() {
+    await delay(100);
+    return getStorage(KEY_BENEFICIARIOS, BENEFICIARIOS_INICIAIS);
+  },
+  async get(id) {
+    await delay(80);
+    const list = getStorage(KEY_BENEFICIARIOS, BENEFICIARIOS_INICIAIS);
+    const item = list.find(b => b.id === Number(id));
+    if (!item) throw new Error('Beneficiário não encontrado.');
+    return item;
+  },
+  async create(data) {
+    await delay(120);
+    const list = getStorage(KEY_BENEFICIARIOS, BENEFICIARIOS_INICIAIS);
+    const newId = list.length > 0 ? Math.max(...list.map(b => b.id || 0)) + 1 : 1;
+    const item = {
+      ...data,
+      id: newId,
+      status: data.status || 'Ativo',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    list.unshift(item);
+    setStorage(KEY_BENEFICIARIOS, list);
+    await mockLogs.registrar('CREATE', 'beneficiarios', newId, { nome: item.nome, projeto: item.projeto });
+    return item;
+  },
+  async update(id, data) {
+    await delay(120);
+    const list = getStorage(KEY_BENEFICIARIOS, BENEFICIARIOS_INICIAIS);
+    const idx = list.findIndex(b => b.id === Number(id));
+    if (idx === -1) throw new Error('Beneficiário não encontrado.');
+    const updated = {
+      ...list[idx],
+      ...data,
+      id: Number(id),
+      updated_at: new Date().toISOString()
+    };
+    list[idx] = updated;
+    setStorage(KEY_BENEFICIARIOS, list);
+    await mockLogs.registrar('UPDATE', 'beneficiarios', id, { nome: updated.nome, projeto: updated.projeto });
+    return updated;
+  },
+  async delete(id) {
+    await delay(100);
+    const list = getStorage(KEY_BENEFICIARIOS, BENEFICIARIOS_INICIAIS);
+    const item = list.find(b => b.id === Number(id));
+    const filtered = list.filter(b => b.id !== Number(id));
+    setStorage(KEY_BENEFICIARIOS, filtered);
+    if (item) {
+      await mockLogs.registrar('DELETE', 'beneficiarios', id, { nome: item.nome });
+    }
+    return { success: true };
+  }
+};
+
+export const mockPrestadores = {
+  async list() {
+    await delay(100);
+    return getStorage(KEY_PRESTADORES, PRESTADORES_INICIAIS);
+  },
+  async get(id) {
+    await delay(80);
+    const list = getStorage(KEY_PRESTADORES, PRESTADORES_INICIAIS);
+    const item = list.find(p => p.id === Number(id));
+    if (!item) throw new Error('Prestador não encontrado.');
+    return item;
+  },
+  async create(data) {
+    await delay(120);
+    const list = getStorage(KEY_PRESTADORES, PRESTADORES_INICIAIS);
+    const newId = list.length > 0 ? Math.max(...list.map(p => p.id || 0)) + 1 : 1;
+    const item = {
+      ...data,
+      id: newId,
+      status: data.status || 'Ativo',
+      tipo_pessoa: data.tipo_pessoa || 'PJ',
+      favorito: Boolean(data.favorito),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    list.unshift(item);
+    setStorage(KEY_PRESTADORES, list);
+    await mockLogs.registrar('CREATE', 'prestadores', newId, { nome: item.nome, servico: item.servico });
+    return item;
+  },
+  async update(id, data) {
+    await delay(120);
+    const list = getStorage(KEY_PRESTADORES, PRESTADORES_INICIAIS);
+    const idx = list.findIndex(p => p.id === Number(id));
+    if (idx === -1) throw new Error('Prestador não encontrado.');
+    const updated = {
+      ...list[idx],
+      ...data,
+      id: Number(id),
+      favorito: data.favorito !== undefined ? Boolean(data.favorito) : list[idx].favorito,
+      updated_at: new Date().toISOString()
+    };
+    list[idx] = updated;
+    setStorage(KEY_PRESTADORES, list);
+    await mockLogs.registrar('UPDATE', 'prestadores', id, { nome: updated.nome, servico: updated.servico });
+    return updated;
+  },
+  async delete(id) {
+    await delay(100);
+    const list = getStorage(KEY_PRESTADORES, PRESTADORES_INICIAIS);
+    const item = list.find(p => p.id === Number(id));
+    const filtered = list.filter(p => p.id !== Number(id));
+    setStorage(KEY_PRESTADORES, filtered);
+    if (item) {
+      await mockLogs.registrar('DELETE', 'prestadores', id, { nome: item.nome });
+    }
+    return { success: true };
+  }
+};
+
+export const mockParceiros = {
+  async list() {
+    await delay(100);
+    return getStorage(KEY_PARCEIROS, PARCEIROS_INICIAIS);
+  },
+  async get(id) {
+    await delay(80);
+    const list = getStorage(KEY_PARCEIROS, PARCEIROS_INICIAIS);
+    const item = list.find(p => p.id === Number(id));
+    if (!item) throw new Error('Parceiro não encontrado.');
+    return item;
+  },
+  async create(data) {
+    await delay(120);
+    const list = getStorage(KEY_PARCEIROS, PARCEIROS_INICIAIS);
+    const newId = list.length > 0 ? Math.max(...list.map(p => p.id || 0)) + 1 : 1;
+    const item = {
+      ...data,
+      id: newId,
+      status: data.status || 'Ativo',
+      tipo_pessoa: data.tipo_pessoa || 'PJ',
+      favorito: Boolean(data.favorito),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    list.unshift(item);
+    setStorage(KEY_PARCEIROS, list);
+    await mockLogs.registrar('CREATE', 'parceiros', newId, { nome: item.nome, tipo_parceria: item.tipo_parceria });
+    return item;
+  },
+  async update(id, data) {
+    await delay(120);
+    const list = getStorage(KEY_PARCEIROS, PARCEIROS_INICIAIS);
+    const idx = list.findIndex(p => p.id === Number(id));
+    if (idx === -1) throw new Error('Parceiro não encontrado.');
+    const updated = {
+      ...list[idx],
+      ...data,
+      id: Number(id),
+      favorito: data.favorito !== undefined ? Boolean(data.favorito) : list[idx].favorito,
+      updated_at: new Date().toISOString()
+    };
+    list[idx] = updated;
+    setStorage(KEY_PARCEIROS, list);
+    await mockLogs.registrar('UPDATE', 'parceiros', id, { nome: updated.nome, tipo_parceria: updated.tipo_parceria });
+    return updated;
+  },
+  async delete(id) {
+    await delay(100);
+    const list = getStorage(KEY_PARCEIROS, PARCEIROS_INICIAIS);
+    const item = list.find(p => p.id === Number(id));
+    const filtered = list.filter(p => p.id !== Number(id));
+    setStorage(KEY_PARCEIROS, filtered);
+    if (item) {
+      await mockLogs.registrar('DELETE', 'parceiros', id, { nome: item.nome });
+    }
+    return { success: true };
+  }
+};
+
 

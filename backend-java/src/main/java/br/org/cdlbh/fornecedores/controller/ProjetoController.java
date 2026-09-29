@@ -51,13 +51,14 @@ public class ProjetoController {
      * POST /api/projetos
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjetoDTO> criar(@Valid @RequestBody ProjetoRequest request,
                                             Authentication authentication) {
         Long usuarioId = authentication != null && authentication.getName() != null && !authentication.getName().equals("anonymousUser")
                 ? Long.parseLong(authentication.getName()) : 1L;
-        String usuarioNome = authentication != null && !authentication.getAuthorities().isEmpty()
-                ? authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
-                : "Sistema";
+        String usuarioNome = authentication != null && authentication.getCredentials() != null
+                ? authentication.getCredentials().toString()
+                : "Usuário";
 
         ProjetoDTO criado = projetoService.criar(request, usuarioId, usuarioNome);
         return ResponseEntity.status(201).body(criado);
@@ -69,14 +70,15 @@ public class ProjetoController {
      * PUT /api/projetos/{id}
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProjetoDTO> atualizar(@PathVariable Long id,
                                                 @Valid @RequestBody ProjetoRequest request,
                                                 Authentication authentication) {
         Long usuarioId = authentication != null && authentication.getName() != null && !authentication.getName().equals("anonymousUser")
                 ? Long.parseLong(authentication.getName()) : 1L;
-        String usuarioNome = authentication != null && !authentication.getAuthorities().isEmpty()
-                ? authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
-                : "Sistema";
+        String usuarioNome = authentication != null && authentication.getCredentials() != null
+                ? authentication.getCredentials().toString()
+                : "Usuário";
 
         ProjetoDTO atualizado = projetoService.atualizar(id, request, usuarioId, usuarioNome);
         return ResponseEntity.ok(atualizado);
@@ -93,9 +95,9 @@ public class ProjetoController {
                                                         Authentication authentication) {
         Long usuarioId = authentication != null && authentication.getName() != null && !authentication.getName().equals("anonymousUser")
                 ? Long.parseLong(authentication.getName()) : 1L;
-        String usuarioNome = authentication != null && !authentication.getAuthorities().isEmpty()
-                ? authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "")
-                : "Sistema";
+        String usuarioNome = authentication != null && authentication.getCredentials() != null
+                ? authentication.getCredentials().toString()
+                : "Usuário";
 
         projetoService.excluir(id, usuarioId, usuarioNome);
         return ResponseEntity.ok(Map.of("success", true));

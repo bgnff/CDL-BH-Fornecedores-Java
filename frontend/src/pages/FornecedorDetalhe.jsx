@@ -15,7 +15,7 @@ export default function FornecedorDetalhe() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   const { data: fornecedor, isLoading } = useQuery({ queryKey: ['fornecedor', id], queryFn: () => fornecedoresAPI.get(id), enabled: !!id });
 

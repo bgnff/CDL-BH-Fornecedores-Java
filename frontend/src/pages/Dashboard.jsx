@@ -1,18 +1,33 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { fornecedoresAPI, documentosAPI } from '@/api/localClient';
+import { fornecedoresAPI, documentosAPI, beneficiariosAPI } from '@/api/localClient';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users, PlusCircle, Building2, Search, TrendingUp, Activity, AlertTriangle, FileText, FolderKanban } from 'lucide-react';
+import { Users, PlusCircle, Building2, Search, TrendingUp, Activity, AlertTriangle, FileText, FolderKanban, HeartHandshake, Sparkles, PartyPopper } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
+import { toast } from 'sonner';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { data: fornecedores = [], isLoading } = useQuery({ queryKey: ['fornecedores'], queryFn: () => fornecedoresAPI.list() });
   const { data: documentos = [] } = useQuery({ queryKey: ['documentosVencendo'], queryFn: () => documentosAPI.list() });
+  const { data: beneficiarios = [] } = useQuery({ queryKey: ['beneficiarios'], queryFn: () => beneficiariosAPI.list() });
+
+  // Celebração de login com mensagem de boas-vindas
+  useEffect(() => {
+    if (sessionStorage.getItem('just_logged_in') === 'true') {
+      sessionStorage.removeItem('just_logged_in');
+
+      const firstName = user?.full_name?.split(' ')[0] || 'Usuário';
+      toast.success(`🎉 Bem-vindo(a), ${firstName}!`, {
+        description: 'Login realizado com sucesso na Fundação CDL BH.',
+        duration: 5000,
+      });
+    }
+  }, [user]);
 
   const ativos = fornecedores.filter(f => f.status === 'ativo').length;
   const recentCount = fornecedores.filter(f => new Date(f.created_at) >= new Date(Date.now() - 7*24*60*60*1000)).length;
@@ -46,18 +61,24 @@ export default function Dashboard() {
   const stats = [
     { title: 'Total de Fornecedores', value: fornecedores.length, icon: Users, color: 'text-primary' },
     { title: 'Fornecedores Ativos', value: ativos, icon: Activity, color: 'text-emerald-600' },
-    { title: 'Cadastrados esta Semana', value: recentCount, icon: TrendingUp, color: 'text-amber-600' },
+    { title: 'Beneficiários Atendidos', value: beneficiarios.length, icon: HeartHandshake, color: 'text-primary' },
     { title: 'Projetos com Fornecedores', value: Object.keys(projetoCounts).length, icon: Building2, color: 'text-violet-600' },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Bem-vindo, {user?.full_name?.split(' ')[0] || 'Usuário'}</h1>
-        <p className="text-muted-foreground text-sm mt-1">Painel de gestão de fornecedores da Fundação CDL BH</p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 relative">
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">Bem-vindo, {user?.full_name?.split(' ')[0] || 'Usuário'}</h1>
+          </div>
+          <p className="text-muted-foreground text-sm mt-1">Painel integrado de gestão da Fundação CDL BH</p>
+        </div>
       </div>
       <div className="flex flex-wrap gap-3">
         <Link to="/cadastrar"><Button className="gap-2"><PlusCircle className="h-4 w-4" />Novo Fornecedor</Button></Link>
+        <Link to="/beneficiarios/cadastrar"><Button variant="outline" className="gap-2 border-primary/30 text-primary hover:bg-primary/10"><HeartHandshake className="h-4 w-4" />Novo Beneficiário</Button></Link>
         <Link to="/projetos"><Button variant="outline" className="gap-2 border-primary/30 text-primary hover:bg-primary/10"><FolderKanban className="h-4 w-4" />Ver Projetos</Button></Link>
         <Link to="/fornecedores"><Button variant="outline" className="gap-2"><Search className="h-4 w-4" />Buscar Fornecedores</Button></Link>
       </div>

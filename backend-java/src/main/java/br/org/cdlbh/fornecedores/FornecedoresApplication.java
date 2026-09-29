@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2026 Brayan Oliveira de Souza
+ * Todos os direitos reservados.
+ *
+ * Protegido sob a Lei Federal nº 9.609/1998 (Lei do Software)
+ * e Lei Federal nº 9.610/1998 (Direitos Autorais).
+ */
 package br.org.cdlbh.fornecedores;
 
 import org.springframework.boot.SpringApplication;
@@ -7,6 +14,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Classe principal da aplicação Spring Boot
+ * Autor e Arquiteto: Brayan Oliveira de Souza
  * 
  * Esta é a classe de entrada (entry point) da aplicação. Quando executamos
  * o projeto, o Spring Boot inicia a partir desta classe.

@@ -68,11 +68,12 @@ public class FornecedorController {
      * @return FornecedorResponse com o fornecedor criado (status 201)
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<FornecedorResponse> criar(@Valid @RequestBody FornecedorRequest request,
                                                      Authentication authentication) {
         // Extrai dados do usuário para auditoria
         Long usuarioId = Long.parseLong(authentication.getName());
-        String usuarioNome = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+        String usuarioNome = authentication.getCredentials() != null ? authentication.getCredentials().toString() : "Usuário";
         
         // Chama o service para criar
         FornecedorResponse response = fornecedorService.criar(request, usuarioId, usuarioNome);
@@ -97,7 +98,7 @@ public class FornecedorController {
                                                          @Valid @RequestBody FornecedorRequest request,
                                                          Authentication authentication) {
         Long usuarioId = Long.parseLong(authentication.getName());
-        String usuarioNome = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+        String usuarioNome = authentication.getCredentials() != null ? authentication.getCredentials().toString() : "Usuário";
         
         FornecedorResponse response = fornecedorService.atualizar(id, request, usuarioId, usuarioNome);
         return ResponseEntity.ok(response);
@@ -119,7 +120,7 @@ public class FornecedorController {
     public ResponseEntity<Map<String, Boolean>> excluir(@PathVariable Long id,
                                                         Authentication authentication) {
         Long usuarioId = Long.parseLong(authentication.getName());
-        String usuarioNome = authentication.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+        String usuarioNome = authentication.getCredentials() != null ? authentication.getCredentials().toString() : "Usuário";
         
         fornecedorService.excluir(id, usuarioId, usuarioNome);
         return ResponseEntity.ok(Map.of("success", true));

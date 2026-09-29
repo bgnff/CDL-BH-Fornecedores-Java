@@ -112,14 +112,27 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of("Sem permissão."));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(ex.getMessage() != null ? ex.getMessage() : "Parâmetro inválido."));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+        logger.error("Violação de integridade de dados: ", ex);
+        String msg = "Conflito de integridade nos dados: registro duplicado ou chave relacionada inválida.";
+        if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("cnpj")) {
+            msg = "Já existe um fornecedor cadastrado com este CNPJ.";
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(msg));
+    }
+
     /**
      * Trata exceções genéricas (RuntimeException)
      * 
-     * Este handler captura RuntimeExceptions que não são das exceções específicas acima.
-     * É um fallback para erros de negócio que ainda usam RuntimeException.
-     * 
-     * NOTA: Idealmente, todos os erros de negócio deveriam usar exceções específicas
-     * (como CredenciaisInvalidasException) para permitir tratamento mais preciso.
+     * Fallback seguro para RuntimeExceptions com tratamento de mensagem nula
      * 
      * @param ex Exceção genérica
      * @return ErrorResponse com mensagem de erro
@@ -129,12 +142,18 @@ public class GlobalExceptionHandler {
         logger.error("RuntimeException capturada: ", ex);
         String message = ex.getMessage();
         
-        // Determina o status HTTP baseado na mensagem
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-        if (message.contains("não encontrado") || message.contains("not found")) {
-            status = HttpStatus.NOT_FOUND;
-        } else if (message.contains("inválida") || message.contains("inválido")) {
-            status = HttpStatus.UNAUTHORIZED;
+        if (message != null) {
+            String lower = message.toLowerCase();
+            if (lower.contains("não encontrado") || lower.contains("not found")) {
+                status = HttpStatus.NOT_FOUND;
+            } else if (lower.contains("inválida") || lower.contains("inválido")) {
+                status = HttpStatus.UNAUTHORIZED;
+            } else if (lower.contains("já existe")) {
+                status = HttpStatus.CONFLICT;
+            }
+        } else {
+            message = "Erro interno no processamento da requisição.";
         }
         
         return ResponseEntity.status(status)
