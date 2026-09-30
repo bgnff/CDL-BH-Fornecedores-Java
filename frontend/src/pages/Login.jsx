@@ -154,6 +154,7 @@ export default function Login() {
           >
             <TransparentVideo
               src={VIDEO_URL}
+              fallbackSrc="/logo-fundacao.png"
               width={340}
               height={170}
               className="h-32 sm:h-36 w-auto"

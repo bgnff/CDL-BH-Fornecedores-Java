@@ -6,6 +6,7 @@ import React, { useRef, useEffect } from 'react';
  */
 export default function TransparentVideo({
   src,
+  fallbackSrc,
   className = '',
   threshold = 232, // Limite onde inicia a transparência
   fullTransparent = 246, // Limite onde se torna 100% transparente
@@ -15,17 +16,18 @@ export default function TransparentVideo({
 }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const [useFallback, setUseFallback] = React.useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
+    if (!video) return;
+    
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
-
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvas?.getContext('2d', { willReadFrequently: true });
     let animationFrameId;
 
     const processFrame = () => {
-      if (video.paused || video.ended) {
+      if (!ctx || video.paused || video.ended) {
         animationFrameId = requestAnimationFrame(processFrame);
         return;
       }
@@ -72,13 +74,24 @@ export default function TransparentVideo({
       animationFrameId = requestAnimationFrame(processFrame);
     };
 
-    video.play().catch(() => {});
+    video.play().catch(() => {
+      setUseFallback(true);
+    });
+    
+    // Se após 1 segundo o vídeo ainda estiver pausado (iOS Low Power Mode ou AutoPlay block)
+    const timeout = setTimeout(() => {
+      if (video.paused) {
+        setUseFallback(true);
+      }
+    }, 1000);
+
     animationFrameId = requestAnimationFrame(processFrame);
 
     return () => {
+      clearTimeout(timeout);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [threshold, fullTransparent]);
+  }, [threshold, fullTransparent, cropBottomRatio]);
 
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
@@ -91,16 +104,26 @@ export default function TransparentVideo({
         muted
         playsInline
         crossOrigin="anonymous"
-        className="hidden"
+        className="fixed top-0 left-0 opacity-0 pointer-events-none -z-50"
       />
 
-      {/* Canvas com transparência real sem fundo */}
-      <canvas
-        ref={canvasRef}
-        width={width}
-        height={height}
-        className="w-auto h-full object-contain pointer-events-none select-none drop-shadow-sm"
-      />
+      {/* Canvas com transparência real sem fundo ou Imagem Fallback */}
+      {useFallback && fallbackSrc ? (
+        <img
+          src={fallbackSrc}
+          alt="Fundação CDL BH"
+          width={width}
+          height={height}
+          className="w-auto h-full object-contain pointer-events-none select-none drop-shadow-sm"
+        />
+      ) : (
+        <canvas
+          ref={canvasRef}
+          width={width}
+          height={height}
+          className={`w-auto h-full object-contain pointer-events-none select-none drop-shadow-sm ${useFallback ? 'hidden' : ''}`}
+        />
+      )}
     </div>
   );
 }
