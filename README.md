@@ -1,160 +1,141 @@
-# Sistema de Gestão de Fornecedores e Parceiros
+# Sistema de Gestão de Fornecedores e Parceiros - CDL-BH
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-5.0-purple.svg)](https://vitejs.dev/)
+[![Security](https://img.shields.io/badge/Security-OWASP_Top_10_Compliant-blue.svg)](#-arquitetura-de-segurança-e-compliance)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
-[![Author](https://img.shields.io/badge/Author-Brayan%20Oliveira%20de%20Souza-informational.svg)](#-autoria-e-créditos-do-projeto)
 
-Sistema corporativo completo e resiliente para homologação, cadastro, auditoria e acompanhamento de contratos e fornecedores, concebido com backend robusto em **Java Spring Boot 3** e frontend reativo e responsivo em **React + Tailwind CSS + Vite**.
+Sistema corporativo completo e resiliente para homologação, cadastro, auditoria e acompanhamento de contratos e fornecedores. Desenvolvido com um backend robusto em **Java Spring Boot 3** e frontend reativo e responsivo em **React + Tailwind CSS + Vite**.
 
 ---
 
 ## 👨‍💻 Autoria e Créditos do Projeto
 
 - **Autor Principal e Arquiteto de Software:** **Brayan Oliveira de Souza**
-- **Organização Beneficiária / Parceira:** Fundação CDL-BH
+- **Organização Parceira:** Fundação CDL-BH
 - **Ano de Desenvolvimento:** 2026
 - **Propriedade Intelectual & Direitos:** Registrado sob proteção autoral conforme a Lei nº 9.609/1998 (Lei do Software) e Lei nº 9.610/1998 (Direitos Autorais). Consulte [PATENTE_E_REGISTRO_INPI.md](PATENTE_E_REGISTRO_INPI.md) e [LICENSE](LICENSE).
 
 ---
 
-## 📋 Visão Geral do Sistema
+## 📋 Como Funciona o Sistema?
 
-O sistema foi arquitetado para simplificar e auditar rigorosamente o ciclo de vida de parceiros e fornecedores:
+O sistema foi arquitetado para simplificar, centralizar e auditar rigorosamente o ciclo de vida de parceiros, beneficiários, prestadores e fornecedores:
 
-- **Cadastro Centralizado de Fornecedores:** Dados cadastrais, empresa/PF, CNPJ validado e mascarado, e-mails, telefones com ação rápida de WhatsApp, permissões operacionais e vínculo a projetos sociais oficiais.
-- **Gestão Documental com Alertas de Validade:** Anexação de certidões, contratos e alvarás com monitoramento inteligente de vencimentos (vencidos e a vencer em 30 dias).
-- **Trilha de Auditoria Imutável (Compliance):** Registro automático de ações (`CREATE`, `UPDATE`, `DELETE`) contendo data/hora, identificação real do usuário autor da ação e detalhamento em formato estruturado (JSONB/Diff).
-- **Mecanismo de Backup Integrado:** Rotinas automatizadas de dump completo (FULL) e incremental via agendamento com controle rigoroso de caminho para prevenção de path traversal.
-- **Autenticação Stateless com JWT & Rate Limiting:** Proteção contra ataques de força bruta no endpoint de login via algoritmo *Token Bucket* (Bucket4j) e controle de permissões por perfil (`ROLE_ADMIN` e `ROLE_USER`).
-- **Flexibilidade Multibanco:** Suporte nativo para **H2 (em memória para testes instantâneos)**, **MySQL 8 (on-premise/servidor)** e **Supabase / PostgreSQL (nuvem/serverless)**.
+- **Centralização Cadastral:** Unifica os dados de fornecedores e parceiros (PJ/PF) com validação rígida de CNPJ/CPF, e-mails, telefones, vínculo a projetos sociais e status operacionais.
+- **Módulo de Anexos e Vencimentos:** Gestão documental para certidões, contratos e alvarás. O sistema conta com inteligência para monitorar prazos de vencimento (indicando status como vencidos ou a vencer).
+- **Ações Rápidas de Contato:** Integração nativa para disparos para o WhatsApp e redirecionamento de E-mails diretamente pelas interfaces.
+- **Painel de Desempenho (Dashboard):** Visualização consolidada de métricas essenciais e totalizadores.
 
 ---
 
-## 🏗️ Arquitetura da Solução
+## 🛡️ Arquitetura de Segurança e Compliance (Cybersecurity)
 
-```
+O projeto foi construído sob uma ótica "Secure by Design", mitigando riscos baseados no OWASP Top 10 e em frameworks de conformidade corporativa:
+
+1. **Trilha de Auditoria Imutável (Compliance):** 
+   - Registro automático e estruturado de todas as ações (`CREATE`, `UPDATE`, `DELETE`), armazenando data/hora, identificação do ator da modificação e diff estruturado em formato JSONB das alterações efetuadas.
+2. **Prevenção contra Ataques de Força Bruta e DDoS:** 
+   - A camada de autenticação utiliza `Bucket4j` (algoritmo Token Bucket) com políticas estritas de *Rate Limiting* por IP nos endpoints públicos (como `/api/auth/login`).
+3. **Autenticação Stateless (JWT) e RBAC:** 
+   - Transações HTTP protegidas por token Bearer gerado via `JJWT`, assinado digitalmente.
+   - Controle de Acesso Baseado em Perfis (RBAC) através do Spring Security (ex: `ROLE_ADMIN`, `ROLE_USER`) blindando endpoints sensíveis.
+4. **Proteção de Dados Sensíveis e Sanitização:** 
+   - Adoção de BCrypt para hashes de senhas.
+   - Mitigação de injeção (SQL Injection e XSS) através de ORM estruturado (Hibernate) e sanitização no mapeamento de entrada.
+   - Filtros HTTP rigorosos para prevenir Clickjacking (`X-Frame-Options`) e MIME-Sniffing (`X-Content-Type-Options`).
+5. **Prevenção de Path Traversal em Arquivos e Backups:**
+   - Rotinas de geração de dump (backup completo) validadas. O download de arquivos prevê sanitização rígida contra ataques de *Directory Traversal* (`../`).
+
+---
+
+## 🏗️ Arquitetura Técnica
+
+```text
 ┌──────────────────────────┐             ┌────────────────────────────────┐             ┌─────────────────────────────┐
 │      Frontend SPA        │             │      Backend REST API          │             │     Banco de Dados          │
 │   (React 18 + Vite)      │◄───────────►│    (Java 21 + Spring Boot 3)   │◄───────────►│  • MySQL 8 (Produção)       │
-│   Porta 5173 / Netlify   │    HTTP     │    Porta 8080                  │    JDBC     │  • Supabase (PostgreSQL)    │
-│   Tailwind CSS + Radix   │  (REST/JWT) │    Spring Security + Bucket4j  │  (HikariCP) │  • H2 (Testes Locais)       │
+│   Hospedagem: Netlify    │    HTTP     │    Framework: Spring Web       │    JDBC     │  • Supabase (PostgreSQL)    │
+│   Tailwind CSS + Radix   │  (REST/JWT) │    Segurança: Spring Security  │  (HikariCP) │  • H2 (Testes Locais)       │
 └──────────────────────────┘             └────────────────────────────────┘             └─────────────────────────────┘
 ```
 
-### Camadas do Backend (Clean MVC Architecture):
-1. **Controller Layer:** Validação de entradas HTTP, sanitização, controle de permissões via `@PreAuthorize` e orquestração de respostas REST.
-2. **Security & Filter Chain:** Interceptação por token Bearer JWT (`JwtAuthenticationFilter`), rate limiting contra brute force (`RateLimitConfig`) e políticas de cabeçalhos de segurança (prevenção contra MIME-sniffing e clickjacking).
-3. **Service Layer:** Regras de negócio, cálculo de diff de alterações para auditoria, coordenação de transações com rollback automático (`@Transactional`).
-4. **Repository Layer:** Abstração de persistência via Spring Data JPA e Hibernate, otimizado com índices e relacionamentos mapeados.
-5. **Entity & DTO Layer:** Separação estrita entre modelos relacionais do banco e contratos de transferência de dados da API.
+### Camadas do Backend (Clean MVC):
+1. **Controller Layer:** Orquestra e serializa requisições/respostas REST, validando DTOs.
+2. **Security & Filter Chain:** Interceptação via `JwtAuthenticationFilter` e políticas de segurança global.
+3. **Service Layer:** Processa regras de negócio, cálculo de diferenças (diffs) e controle transacional (`@Transactional`).
+4. **Repository Layer:** Interage de forma segura com o banco utilizando Spring Data JPA.
+5. **Entity & DTO Layer:** Garante o isolamento entre o modelo de persistência e a exibição exposta para a API.
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## 🔒 Boas Práticas e Segurança de Repositório
 
-| Camada | Tecnologia | Finalidade |
-|---|---|---|
-| **Linguagem Backend** | Java 21 LTS | Performance de compilação, tipagem estática e segurança de execução |
-| **Framework Web** | Spring Boot 3.2.0 | Inicialização rápida, injeção de dependência e ecossistema empresarial |
-| **Segurança** | Spring Security 6 & JJWT 0.12.3 | Autenticação stateless, criptografia BCrypt e RBAC |
-| **Proteção de Acesso** | Bucket4j 8.7.0 | Rate limiting preventivo contra força bruta no login |
-| **Persistência** | Spring Data JPA / Hibernate | Mapeamento objeto-relacional com suporte multiplataforma |
-| **Frontend** | React 18 & Vite 5 | Renderização ultrarrápida, SPA reativa e empacotamento otimizado |
-| **Estilização** | Tailwind CSS & shadcn/ui | Design system moderno, responsivo e com componentes acessíveis |
-| **Bancos Suportados** | MySQL 8 / PostgreSQL / H2 | Flexibilidade de infraestrutura e desenvolvimento |
+Foi realizada uma varredura para garantir que informações sensíveis não vazem para o repositório público:
 
----
+### ❌ NUNCA deve ser versionado no Git:
+- **Senhas, Tokens e Secrets:** Qualquer chave de API real ou secret JWT nunca será armazenada em arquivos versionados. 
+- **Backups de Banco de Dados (`*.sql` com dados sensíveis, `*.dump`):** Contém PII (Personally Identifiable Information) o que violaria a LGPD.
+- **Variáveis de Ambiente (`.env`, `application-production.properties`):** Arquivos contendo conexões ou credenciais reais do ambiente de produção/AWS/Supabase.
 
-## 🔒 Boas Práticas de Git: O que DEVE e NÃO DEVE Estar no Repositório
-
-### ❌ NUNCA deve ser commitado no Git:
-- **Arquivos de backup e dumps de banco (`backups/*.sql`, `*.dump`):** Podem expor dados de empresas, contatos, dados de pessoas físicas e violar a LGPD (Lei Geral de Proteção de Dados).
-- **Variáveis de ambiente com chaves reais (`.env`, `.env.local`):** Chaves de API, credenciais do banco e chaves de assinatura JWT nunca devem ser versionadas.
-- **Configurações locais de IDEs (`.vscode/`, `.idea/`, `*.iml`):** Evita conflitos de configuração entre desenvolvedores.
-- **Diretórios de build e dependências (`target/`, `node_modules/`, `dist/`):** Aumentam o repositório desnecessariamente e devem ser gerados em tempo de compilação.
-- **Arquivos de log (`*.log`, `logs/`):** Podem conter stack traces sensíveis e informações de depuração.
-
-### ✅ O que DEVE estar no repositório:
-- **Código-fonte da aplicação (`src/`):** Classes Java, componentes React, estilos e testes.
-- **Arquivos de configuração de exemplo (`application-example.properties`, `.env.example`):** Modelos preenchidos apenas com valores fictícios/placeholders.
-- **Scripts DDL de banco de dados (`db-java/schema.sql`, `supabase/schema.sql`):** Apenas estrutura de tabelas, índices e triggers (sem dados sensíveis).
-- **Arquivos de manifesto de dependência (`pom.xml`, `package.json`, `package-lock.json`).
-- **Documentação do projeto (`README.md`, `LICENSE`, `PATENTE_E_REGISTRO_INPI.md`, guias).**
+### ✅ O que DEVE ser versionado:
+- **Scripts de Migração/DDL (`schema.sql`):** Apenas estrutura de tabelas, roles emuladas e funções, sem dados identificáveis.
+- **Exemplos de Configuração (`.env.example`, `application-example.properties`):** Modelos preenchidos com valores vazios para guiar novos desenvolvedores.
 
 ---
 
-## 🚀 Como Executar o Projeto
+## 🚀 Como Executar o Projeto Localmente
 
 ### Pré-requisitos
-- **Java JDK 21+** instalado e configurado no PATH
+- **Java JDK 21+**
 - **Apache Maven 3.9+**
 - **Node.js 18+** e **npm**
-- **MySQL 8** (opcional, caso queira rodar o banco local persistido)
+- **MySQL 8** ou **PostgreSQL** (para persistência de longo prazo).
 
----
+### Ambiente de Desenvolvimento Ágil (H2 Memory Database)
+Não é necessário instalar banco de dados externo. O sistema subirá uma instância limpa em memória com um script seguro de seed.
 
-### Opção 1: Inicialização Expressa para Testes (H2 em Memória - Sem MySQL)
-Não requer nenhum banco instalado! Os dados de teste e usuários já são criados em memória automaticamente:
-
-```bash
-# 1. Iniciar o Backend no perfil 'local'
-cd backend-java
-mvn spring-boot:run -Dspring-boot.run.profiles=local
-
-# 2. Em outro terminal, iniciar o Frontend
-cd frontend
-npm install
-npm run dev
-```
-
-- **Acesso Web:** `http://localhost:5173`
-- **Console do H2:** `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:cdl_bh_fornecedores`)
-- **Usuários Padrão para Teste:**
-  - Admin: `admin@cdlbh.org.br` | Senha: `admin123`
-  - Usuário Comum: `user@cdlbh.org.br` | Senha: `user123`
-
----
-
-### Opção 2: Produção Local com MySQL 8
-
-1. Crie o schema e tabelas no seu MySQL:
-   ```bash
-   mysql -u root -p < db-java/schema.sql
-   ```
-2. Crie o arquivo `backend-java/src/main/resources/application.properties` a partir de `application-example.properties` com suas credenciais seguras.
-3. Inicie o backend:
+1. **Iniciar o Backend:**
    ```bash
    cd backend-java
-   mvn spring-boot:run
+   mvn spring-boot:run -Dspring-boot.run.profiles=local
    ```
+   *(A base H2 inicializará no console: `http://localhost:8080/h2-console` usando `jdbc:h2:mem:cdl_bh_fornecedores`)*
+
+2. **Iniciar o Frontend:**
+   Abra um novo terminal e execute:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   *(Acesse `http://localhost:5173`. As credenciais de teste para o ambiente em memória se encontram nos scripts de seed locais).*
+
+### Ambiente de Homologação / Produção
+1. Provisione seu banco de dados MySQL ou Supabase PostgreSQL.
+2. Clone o arquivo `application-example.properties` para `application.properties` informando os dados reais e *passwords*.
+3. Execute as tabelas localizadas em `db-java/schema.sql` ou em `supabase/`.
+4. Compile ou suba a aplicação definindo o profile ativo de produção.
 
 ---
 
 ## 🔌 Principais Endpoints da API REST
 
-| Método | Endpoint | Perfil Mínimo | Descrição |
+| Método | Endpoint | Perfil Mínimo | Segurança / Descrição |
 |---|---|---|---|
-| `POST` | `/api/auth/login` | Público | Autenticação com rate limiting (retorna token Bearer JWT) |
-| `GET` | `/api/auth/me` | Autenticado | Dados do usuário logado |
-| `GET` | `/api/fornecedores` | Autenticado | Listagem completa de fornecedores e parceiros |
-| `GET` | `/api/fornecedores/{id}` | Autenticado | Detalhes de um fornecedor específico |
-| `POST` | `/api/fornecedores` | Autenticado | Cadastro de fornecedor (gera registro de auditoria) |
-| `PUT` | `/api/fornecedores/{id}` | `ADMIN` | Atualização cadastral com cálculo de diff |
-| `DELETE` | `/api/fornecedores/{id}` | `ADMIN` | Exclusão de fornecedor |
-| `GET` | `/api/documentos/vencendo` | Autenticado | Documentos próximos ao vencimento |
-| `POST` | `/api/documentos` | `ADMIN` | Anexação e metadados de novo documento |
-| `POST` | `/api/backup/generate` | `ADMIN` | Geração manual de dump do banco de dados |
-| `GET` | `/api/backup/download/{file}` | `ADMIN` | Download protegido contra path traversal |
-| `GET` | `/api/health` | Público | Verificação de disponibilidade da aplicação |
+| `POST` | `/api/auth/login` | Público | Autenticação, Protegido por Rate-Limit e Token Bucket |
+| `GET` | `/api/auth/me` | Autenticado | Retorna Claims do JWT e perfil (RBAC) |
+| `GET` | `/api/fornecedores` | Autenticado | Listagem sanitizada de cadastros |
+| `POST` | `/api/fornecedores` | Autenticado | Inserção segura, disparando a Trilha de Auditoria |
+| `PUT` | `/api/fornecedores/{id}` | `ADMIN` | Modificações restritas, armazenando log Diff em JSONB |
+| `DELETE` | `/api/fornecedores/{id}` | `ADMIN` | Soft Delete ou Exclusão (Requer Role Elevada) |
+| `POST` | `/api/backup/generate` | `ADMIN` | Geração de backup do BD em arquivo protegido |
+| `GET` | `/api/backup/download/{file}` | `ADMIN` | Arquivo do BD (Filtrado contra `../` Path Traversal) |
 
 ---
 
-## ⚖️ Proteção Intelectual e Licença
+## ⚖️ Licença
 
-Este projeto é de autoria de **Brayan Oliveira de Souza** e possui proteção autoral e patrimonial estrita.
-
-- **Licença:** Consulte o arquivo [LICENSE](LICENSE) para termos de titularidade e restrições.
-- **Processo de Registro no INPI:** Instruções completas para formalização de registro de software junto ao INPI disponíveis em [PATENTE_E_REGISTRO_INPI.md](PATENTE_E_REGISTRO_INPI.md).
+Este projeto possui código fechado e é de uso exclusivo. Para mais detalhes sobre regras de uso e implantação, leia atentamente [LICENSE](LICENSE).
